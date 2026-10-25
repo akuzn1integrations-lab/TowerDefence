@@ -394,7 +394,7 @@ $('reducedMotion').addEventListener('change',e=>{
 });
 on('testSound',()=>audio.cue('test'));
 on('continueButton',camp);
-on('homeShortcut',()=>screen==='mission'?$('quitDialog').showModal():show('home'));
+on('homeShortcut',()=>mission&&['preparation','combat','intermission'].includes(mission.phase)?$('quitDialog').showModal():show('home'));
 on('homeHelp',()=>$('helpDialog').showModal());
 on('newGameButton',()=>{
   if(!window.confirm('Начать заново? Все звёзды, технологии и ресурсы будут удалены.'))return;
@@ -434,4 +434,6 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&screen==='
 window.addEventListener('blur',()=>{if(screen==='mission'&&mission){paused=true;accumulator=0;}});
 if(loadWarning)setTimeout(()=>toast(loadWarning),500);
 if(MISSION_IDS.some(id=>record(id).victories>0))$text('continueButton','Продолжить экспедицию');
+document.addEventListener('pointerdown',()=>audio.startMusic(),{once:true});
+document.addEventListener('keydown',()=>audio.startMusic(),{once:true});
 requestAnimationFrame(tick);
