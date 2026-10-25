@@ -19,18 +19,19 @@ const profile=mkdtempSync(join(tmpdir(),'nova7-browser-'));
 const server=spawn(process.execPath,['server.js'],{env:{...process.env,PORT:String(port)},stdio:'ignore'});
 let browser,ws;
 async function fetchJson(url){try{const r=await fetch(url);return r.ok?await r.json():null;}catch{return null;}}
-async function waitFor(get,limit=120){
+async function waitFor(get,limit=300){
   for(let i=0;i<limit;i++){const v=await get();if(v)return v;await sleep(100);}
   throw Error('Browser smoke timeout');
 }
 try{
   await waitFor(async()=>{try{return (await fetch('http://127.0.0.1:'+port+'/')).ok;}catch{return false;}},70);
   browser=spawn(chrome,[
-    '--headless=new','--no-sandbox','--disable-gpu','--disable-dev-shm-usage',
+    '--headless=new','--no-sandbox','--disable-gpu','--disable-dev-shm-usage','--no-zygote','--disable-background-networking',
     '--no-first-run','--remote-allow-origins=*','--remote-debugging-port='+debug,
     '--user-data-dir='+profile,'--window-size=1280,800','http://127.0.0.1:'+port+'/'
   ],{stdio:'ignore'});
   const tab=await waitFor(async()=>{
+    if(browser.exitCode!==null)throw Error('Chromium exited before devtools became available: '+browser.exitCode);
     const pages=await fetchJson('http://127.0.0.1:'+debug+'/json');
     return pages?.find(p=>p.type==='page'&&p.url.startsWith('http://127.0.0.1:'+port));
   });
