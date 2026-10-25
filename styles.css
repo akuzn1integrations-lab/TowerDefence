@@ -5,3 +5,50 @@
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important;animation:none!important}}
 
 [hidden]{display:none!important}
+
+/* MVP: campaign map, research cards and adaptable equipment palette */
+.research-list{display:grid;gap:12px;max-height:420px;overflow-y:auto;padding-right:3px}
+.research-list .research-info{margin-bottom:0}
+.research-list .tech-content{flex:1;min-width:0}
+.research-list .btn{margin-top:12px}
+.blocked-research{display:block;margin-top:9px;color:#8097a3!important}
+.worldmap{position:relative;display:flex;align-items:center;justify-content:center}
+.sector-nodes{position:relative;z-index:3;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;width:min(92%,690px);margin:28px auto}
+.sector-chip{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;min-width:0;min-height:115px;gap:5px;padding:13px;border-radius:11px;background:#0c2635e8;color:#d7eeee;text-align:left;border:1px solid #315567;box-shadow:0 12px 28px #04151d7a;transition:border-color .15s,background .15s}
+.sector-chip.available{border-color:#469987;background:#134744ed}
+.sector-chip.selected{outline:2px solid #a3fce5;outline-offset:3px}
+.sector-chip.locked{opacity:.68}
+.sector-chip .sector-index{font:700 2rem Rajdhani,system-ui,sans-serif;color:#65e9c4}
+.sector-chip strong{font-size:.85rem;line-height:1.3}
+.sector-chip small{color:#aed4d1;font-size:.69rem;line-height:1.3}
+.sector-chip:hover{background:#215b5c}
+.worldmap .map-fog{top:auto;bottom:18px;right:20px;opacity:.7;pointer-events:none}
+.worldmap .map-orbit{top:5%;left:25%;width:360px;height:360px;pointer-events:none}
+.sector-detail #mapConditions{line-height:1.65}
+.build-options{display:grid;grid-template-columns:1fr;max-height:290px;overflow-y:auto;padding-right:2px;gap:6px}
+.build-option{flex-shrink:0;min-width:0}
+.build-name{min-width:0}
+.build-name strong{font-size:.81rem}
+.build-name small{font-size:.68rem}
+.selection-panel{margin-top:14px}
+.selection-panel #commandButton{margin-top:8px}
+#researchList button,#sectorNodes button{min-height:44px}
+.mission-screen .field-wrap{contain:paint}
+@media(max-width:1000px){
+ .battle-panel .build-options{max-height:220px;grid-column:1/2;overflow:auto}
+ .battle-panel .selection-panel{grid-column:1/2}
+}
+@media(max-width:720px){
+ .sector-nodes{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:12px 0;width:96%}
+ .sector-chip{min-height:85px;padding:9px}
+ .sector-chip .sector-index{font-size:1.45rem}
+ .sector-chip strong{font-size:.76rem}
+ .sector-chip small{font-size:.61rem}
+ .worldmap{min-height:390px}
+ .worldmap .map-fog{font-size:.5rem}
+ .battle-panel .build-options{grid-template-columns:repeat(2,minmax(0,1fr));max-height:250px}
+ .battle-panel .selection-panel{grid-column:auto}
+ .research-list{max-height:none}
+ .mission-hud{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .mission-hud>div{overflow:hidden}
+}
