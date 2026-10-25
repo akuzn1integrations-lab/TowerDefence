@@ -36,6 +36,7 @@ export class AudioDirector {
       this.note(frequency,.15,.045*volume,'triangle',i*.095));
   }
   startMusic(){
+    if(Number(this.settings().musicVolume)>0)this.context(); // unlock audio in the user interaction that enables music
     if(this.timer)return;
     const scale=[196,246.94,293.66,369.99,293.66,246.94,220,174.61];
     this.timer=setInterval(()=>{
