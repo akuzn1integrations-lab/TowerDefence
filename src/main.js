@@ -344,7 +344,8 @@ function finishMission(){
   show('results');
 }
 function tick(now){
-  requestAnimationFrame(tick);
+  document.documentElement.dataset.appReady='true';
+requestAnimationFrame(tick);
   if(screen!=='mission'||!mission){lastFrame=now;return;}
   if(!lastFrame)lastFrame=now;
   const elapsed=Math.min(.25,Math.max(0,(now-lastFrame)/1000));lastFrame=now;
