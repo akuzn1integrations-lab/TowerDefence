@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#07141e">
+  <meta name="description" content="TowerDefence: научно-фантастическая оборона исследовательской экспедиции на Нова-7.">
+  <title>TowerDefence — Экспедиция Нова-7</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./src/main.js"></script>
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <div class="brand"><span class="brand-icon" aria-hidden="true">◈</span><div><strong>NOVA<span class="brand-accent">—7</span></strong><small>Экспедиционный корпус</small></div></div>
+      <div class="top-right"><span id="saveIndicator" class="tiny-status" role="status">Готово к экспедиции</span><button id="homeShortcut" class="nav-link" type="button">Главное меню</button></div>
+    </header>
+
+    <main>
+      <section id="screen-home" class="screen active">
+        <div class="hero">
+          <div class="hero-copy">
+            <span class="eyebrow">TOWER DEFENCE · ПЕРВАЯ ВЫЛАЗКА</span>
+            <h1>Новая планета.<br><em>Последний рубеж.</em></h1>
+            <p>«Ковчег» достиг цели. Защитите исследователей, пока они разворачивают оборудование на неизведанной земле.</p>
+            <div class="actions"><button class="btn primary big" id="continueButton" type="button">Начать экспедицию</button><button class="btn outline" id="homeHelp" type="button">Как играть</button></div>
+          </div>
+          <div class="planet-art" aria-hidden="true"><div class="planet"><div class="ring"></div></div><div class="planet-label">НОВА-7 // ВНЕШНИЙ РУБЕЖ</div></div>
+        </div>
+        <div class="feature-strip"><div><span>01</span><strong>Защитите генератор</strong><small>Не подпускайте диких существ</small></div><div><span>02</span><strong>Завершите монтаж</strong><small>Продержитесь 80 игровых секунд</small></div><div><span>03</span><strong>Заработайте звёзды</strong><small>Улучшите базу и исследуйте дальше</small></div></div>
+      </section>
+
+      <section id="screen-camp" class="screen">
+        <div class="page-head"><div><span class="eyebrow">КОМАНДНЫЙ ПУНКТ</span><h1>Базовый лагерь «Ковчег»</h1><p>Место, куда экспедиция возвращается после каждой вылазки.</p></div><button id="toMap" class="btn primary" type="button">Карта планеты →</button></div>
+        <div class="resource-row"><div class="stat-card"><span>Материалы</span><strong id="campMaterials">0</strong><small>Инженерные запасы</small></div><div class="stat-card"><span>Научные данные</span><strong id="campData">0</strong><small>Исследовательские архивы</small></div><div class="stat-card"><span>Звёзды экспедиции</span><strong id="campStars">0 / 3</strong><small>Лучший результат</small></div></div>
+        <div class="camp-grid">
+          <article class="panel scenic-panel"><span class="eyebrow">ПОСАДОЧНЫЙ МОДУЛЬ</span><div class="camp-scene" aria-hidden="true"><div class="ship"></div><div class="light-beam"></div><div class="ground"></div></div><h2>Территория под контролем</h2><p id="campNarrative">Учёные готовят первый энергетический купол. Им требуется защита.</p></article>
+          <article class="panel"><span class="eyebrow">МАСТЕРСКАЯ</span><h2>Исследования и улучшения</h2><div class="research-info"><div class="tech-icon">⌁</div><div><strong>Точный привод I</strong><p>Постоянно повышает урон кинетических турелей на 10%.</p><small>Стоимость: 250 материалов</small></div></div><button id="researchButton" class="btn outline block" type="button">Изучить технологию</button><p class="hint" id="researchHint">Доступно после первой успешной миссии.</p></article>
+        </div>
+      </section>
+
+      <section id="screen-map" class="screen">
+        <div class="page-head"><div><span class="eyebrow">ОБЗОР ПЛАНЕТЫ</span><h1>Карта секторов</h1><p>Открывайте новые области по мере завершения заданий.</p></div><button id="mapBack" class="btn outline" type="button">← В лагерь</button></div>
+        <div class="map-layout">
+          <div class="worldmap panel" aria-label="Карта секторов">
+            <div class="map-orbit"></div>
+            <button class="map-node discovered" id="sector01" type="button"><span>01</span><small>Первая линия</small></button>
+            <div class="map-connection" aria-hidden="true"></div>
+            <button class="map-node frontier" id="sector02" type="button" disabled><span>02</span><small>Геопост</small></button>
+            <span class="map-fog">НЕИЗВЕДАННАЯ ТЕРРИТОРИЯ</span>
+          </div>
+          <aside class="panel sector-detail"><span class="eyebrow">ПОСАДОЧНАЯ ДОЛИНА // СЕКТОР 01</span><h2>Первая линия</h2><div class="mission-stars" id="mapStars">☆☆☆</div><p>Инженеры монтируют защитный купол. Стайные животные приближаются к источнику энергии.</p>
+            <div class="detail-list"><div><span>Основная цель</span><b>Защитить генератор и завершить монтаж</b></div><div><span>Ожидаемая угроза</span><b>Искрошмыг · 3 волны</b></div><div><span>Условия на звёзды</span><b>Победа · ≥ 60% HP · без урона</b></div><div><span>Первая победа</span><b>500 материалов · 50 данных</b></div></div>
+            <button id="mapPlay" class="btn primary block" type="button">Начать миссию</button><button id="mapBrief" class="btn outline block" type="button">Смотреть брифинг</button><p class="hint">Вертикальный срез: сектор 01 полностью играбелен. Остальные сектора — будущие этапы.</p>
+          </aside>
+        </div>
+      </section>
+
+      <section id="screen-briefing" class="screen">
+        <div class="brief-wrap panel"><div class="brief-head"><span class="eyebrow">ПОЛЁТНОЕ ЗАДАНИЕ · СЕКТОР 01</span><button id="briefClose" class="icon-button" title="Закрыть брифинг" type="button" aria-label="Закрыть брифинг">✕</button></div>
+          <div class="brief-visual"><div class="radar" aria-hidden="true"><div class="radar-sweep"></div><span class="radar-center">◈</span></div><div class="brief-image-label">СИСТЕМА ОБЗОРА // НОВА-7</div></div>
+          <div class="brief-bottom"><small id="briefStep">КАДР 1 / 4</small><h2 id="briefTitle">Новая почва</h2><p id="briefText"></p><div class="brief-dots" id="briefDots" aria-label="Шаги брифинга"></div>
+            <div class="brief-controls"><button class="btn outline" id="briefPrevious" type="button">← Назад</button><button class="btn quiet" id="briefSkip" type="button">Пропустить</button><button class="btn primary" id="briefNext" type="button">Далее →</button></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="screen-mission" class="screen mission-screen">
+        <div class="mission-heading"><div><span class="eyebrow">СЕКТОР 01 · ПЕРВАЯ ЛИНИЯ</span><h1>Операция «Купол»</h1></div><div class="mission-top-actions"><button id="missionBrief" class="btn small outline" type="button">Брифинг</button><button id="quitMission" class="btn small outline" type="button">В лагерь</button></div></div>
+        <div class="mission-hud"><div><span>Генератор</span><strong id="hudHp">200 / 200</strong><div class="meter"><i id="hpBar"></i></div></div><div><span>Монтаж купола</span><strong id="hudInstall">0%</strong><div class="meter"><i id="installBar" class="cyan"></i></div></div><div><span>Волна</span><strong id="hudWave">0 / 3</strong></div><div><span>Энергия снабжения</span><strong id="hudSupply">400 ЭС</strong></div><div><span>Уничтожено</span><strong id="hudKills">0</strong></div></div>
+        <div class="combat-layout">
+          <div class="field-wrap">
+            <canvas id="field" role="img" aria-label="Тактическое поле: выбирайте клетку и подтверждайте строительство на панели" tabindex="0"></canvas>
+            <div class="field-top"><span id="gamePhase" class="phase-pill">ПОДГОТОВКА</span><span class="field-coord">N7 / 01 — ТАКТИЧЕСКАЯ КАРТА</span></div>
+            <div class="field-bottom"><span id="fieldTip">Выберите башню и нажмите на подсвеченную площадку.</span><div class="field-zoom"><button id="zoomOut" type="button" aria-label="Уменьшить масштаб">−</button><button id="zoomIn" type="button" aria-label="Увеличить масштаб">+</button></div></div>
+          </div>
+          <aside class="battle-panel panel">
+            <span class="eyebrow">КОМАНДНЫЙ ИНТЕРФЕЙС</span><h2>Оборона</h2>
+            <div class="build-options"><button class="build-option active" id="buildMode" type="button"><span class="build-icon">⌖</span><span><strong>Кинетическая турель</strong><small>100 ЭС · урон 12 · радиус 3</small></span></button><button class="build-option" id="inspectMode" type="button"><span class="build-icon">◎</span><span><strong>Осмотр башни</strong><small>Улучшить или продать</small></span></button></div>
+            <div class="selection-panel" id="selectionPanel"><span id="selectionInfo" class="hint">Выберите свободную светящуюся площадку на карте, затем подтвердите постройку.</span><button id="confirmBuild" class="btn primary block" type="button" disabled>Построить — 100 ЭС</button><div class="selection-actions"><button id="upgradeButton" class="btn outline" type="button" hidden>Улучшить</button><button id="sellButton" class="btn quiet" type="button" hidden>Продать</button></div></div>
+            <div class="battle-divider"></div>
+            <span class="eyebrow">УПРАВЛЕНИЕ ВОЛНАМИ</span><p class="wave-description" id="nextWaveInfo">Первая волна: 5 Искрошмыгов, западный подход.</p>
+            <button id="startWave" class="btn primary block" type="button">Запустить волну 1 →</button><div class="battle-controls"><button id="pauseButton" class="btn outline" type="button">⏸ Пауза</button><button id="speedButton" class="btn outline" type="button">Скорость 1×</button></div>
+            <p class="hint">На телефоне: выбор клетки → «Построить». Карту можно двигать пальцем и масштабировать кнопками ±.</p>
+          </aside>
+        </div>
+        <div class="objective-strip"><span>★ Победить в миссии</span><span>★ Сохранить ≥ 60% HP генератора</span><span>★ Не допустить повреждений</span></div>
+      </section>
+
+      <section id="screen-results" class="screen">
+        <div class="results-card panel"><span class="eyebrow">ОТЧЁТ ЭКСПЕДИЦИИ // СЕКТОР 01</span><div id="resultsBadge" class="results-badge">ОПЕРАЦИЯ ЗАВЕРШЕНА</div><h1 id="resultsTitle">Исследование завершено</h1><div class="result-stars" id="resultsStars">★★★</div><p id="resultDescription"></p><div class="result-stats" id="resultStats"></div><div id="rewardBox" class="reward-box"></div><div class="actions center"><button class="btn primary" id="resultsCamp" type="button">В лагерь</button><button class="btn outline" id="resultsRetry" type="button">Повторить миссию</button></div></div>
+      </section>
+    </main>
+    <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+    <dialog id="helpDialog" class="panel modal"><h2>Как играть</h2><p>Светящиеся площадки вокруг дороги доступны для установки турелей. Нажмите на площадку и подтвердите покупку. Турели автоматически атакуют существ в радиусе.</p><p>Запускайте волны кнопкой справа. Не допускайте уничтожения генератора, пока инженеры не завершат монтаж (80 игровых секунд). Защита без повреждений принесёт три звезды.</p><p>На карте можно двигать обзор, а масштаб менять кнопками + и −. Для выбора установленной башни используйте режим «Осмотр».</p><form method="dialog"><button class="btn primary block" type="submit">Понятно</button></form></dialog>
+    <dialog id="quitDialog" class="panel modal"><h2>Прервать вылазку?</h2><p>Текущая попытка будет потеряна. Прогресс предыдущих побед и исследования сохранятся.</p><div class="actions"><button id="quitCancel" class="btn outline" type="button">Продолжить</button><button id="quitConfirm" class="btn danger" type="button">Покинуть сектор</button></div></dialog>
+  </div>
+</body>
+</html>
