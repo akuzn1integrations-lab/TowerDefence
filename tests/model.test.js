@@ -256,3 +256,113 @@ test('аудиомодуль изолирован от игровой симул
   assert.doesNotThrow(()=>audio.cue('victory'));
   audio.dispose();
 });
+
+
+test('расширенная кампания: все 24 миссии имеют уникальный контент, а все биомы достижимы',()=>{
+  assert.deepEqual(MISSION_IDS,[...Array(24)].map((_,i)=>'sector-'+String(i+1).padStart(2,'0')));
+  assert.equal(new Set(MISSION_IDS.map(id=>MISSIONS[id].name)).size,24);
+  assert.equal(new Set(MISSION_IDS.map(id=>MISSIONS[id].biome)).size,8);
+  assert.equal(Object.keys(ENEMIES).length>=11,true);
+  assert.equal(Object.keys(TOWERS).length,6);
+  assert.equal(Object.keys(TRAPS).length,3);
+  assert.equal(Object.keys(UNITS).length,3);
+  for(const id of MISSION_IDS.slice(6)){
+    const m=MISSIONS[id];
+    assert.equal(m.briefing.length,4,id+' briefing');
+    assert.ok(m.waves.length>=4,id+' waves');
+    assert.ok(m.allowed.towers.length>=5,id+' defenses');
+    assert.ok(m.map.buildCells.length>20,id+' build slots');
+    assert.ok(m.stars.length===3,id+' stars');
+    assert.ok(m.rewards.materials>0 && m.rewards.firstMaterials>0);
+  }
+});
+test('загрузка схемы v2 сохраняет прежние победы и открывает сектор 07',()=>{
+  const old=newProgress();
+  old.schemaVersion=2;
+  for(const id of MISSION_IDS.slice(0,6)){old.sectors[id].victories=1;old.sectors[id].bestStars=2;}
+  old.resources.materials=1900;old.research.precision=true;
+  old.sectors['sector-07']=undefined;
+  const next=sanitizeProgress(old);
+  assert.equal(next.schemaVersion,3);
+  assert.equal(next.sectors['sector-06'].bestStars,2);
+  assert.ok(next.unlockedSectorIds.includes('sector-07'));
+  assert.equal(next.sectors['sector-24'].victories,0);
+  assert.equal(next.resources.materials,1900);
+});
+test('три ретранслятора активируются по очереди, прогресс меняется только в бою',()=>{
+  const mission=createMission('sector-08');
+  assert.equal(mission.config.objective.type,'relay');
+  assert.equal(mission.relayIndex,0);
+  assert.equal(objectiveProgress(mission),0);
+  startWave(mission);
+  for(let i=0;i<1300;i++)updateMission(mission,1/60);
+  assert.ok(mission.relayIndex>=1,'первый ретранслятор активирован');
+  const last=mission.science;
+  mission.phase='intermission';
+  for(let i=0;i<120;i++)updateMission(mission,1/60);
+  assert.equal(mission.science,last,'в межволновой паузе наука останавливается');
+});
+test('новые устройства: крио, резонатор, акустическая приманка и ремонтный бот',()=>{
+  const state=createMission('sector-20');
+  const area=state.config.map.buildCells;
+  assert.equal(build(state,'cryo',area[0].col,area[0].row).ok,true);
+  assert.equal(build(state,'sonic',area[1].col,area[1].row).ok,true);
+  assert.equal(build(state,'repair',area[2].col,area[2].row).ok,true);
+  const trap=state.config.map.trapCells[0];
+  assert.equal(build(state,'lure',trap.col,trap.row).ok,true);
+  assert.equal(state.units[0].type,'repair');
+  const moved=commandDrone(state,state.units[0].id,10,10);
+  assert.equal(moved.ok,true);
+});
+test('вся кампания 07–24 проходима после 06 без ресурсов лагеря',()=>{
+  const p=newProgress();
+  // Предыдущие сектора уже пройдены без дополнительного фарма.
+  for(const id of MISSION_IDS.slice(0,6))grantVictory(p,id,1);
+  const startingMaterials=p.resources.materials;
+  const routeFor=(m,type)=>{
+    if(type==='antiAir')return [['air',m.config.map.routes.air||m.config.map.routes.west]];
+    return Object.entries(m.config.map.routes).filter(([name])=>type==='sonic'||name!=='air');
+  };
+  for(const id of MISSION_IDS.slice(6)){
+    assert.ok(p.unlockedSectorIds.includes(id),id+' доступен');
+    const state=createMission(id);const hasAir=!!state.config.map.routes.air;
+    function place(type){
+      if(!state.config.allowed.towers.includes(type))return false;
+      const spec=TOWERS[type],routes=routeFor(state,type);
+      let target=null,best=-Infinity;
+      for(const site of state.config.map.buildCells){
+        if(!canBuild(state,type,site.col,site.row).ok)continue;
+        const coverage=routes.reduce((total,[routeId,route])=>total+
+          route.reduce((n,t)=>n+(Math.hypot(t.col-site.col,t.row-site.row)<=spec.range+.4?
+            (routeId==='north'?1.4:1):0),0),0);
+        const crowd=state.towers.filter(t=>t.type===type).reduce((n,t)=>
+          n+Math.max(0,6-Math.hypot(t.col-site.col,t.row-site.row)),0);
+        const goalDistance=Math.hypot(site.col-state.config.map.target.x,site.row-state.config.map.target.y);
+        const score=coverage*2-crowd*8-goalDistance*.12;
+        if(score>best){best=score;target=site;}
+      }
+      return target?build(state,type,target.col,target.row).ok:false;
+    }
+    const opening=hasAir?['antiAir','antiAir','antiAir','antiAir','pulse','pulse','pulse','sonic','sonic','mortar','cryo']:
+      ['pulse','pulse','pulse','pulse','mortar','mortar','sonic','sonic','cryo','kinetic'];
+    for(const type of opening)place(type);
+    let steps=0;
+    for(let wave=0;wave<state.config.waves.length;wave++){
+      assert.equal(startWave(state).ok,true);
+      while(state.phase==='combat'&&steps<26000){updateMission(state,1/60);steps++;}
+      assert.notEqual(state.phase,'defeat',id+' wave '+(wave+1));
+      if(state.phase==='intermission'){
+        const reinforcement=hasAir?['antiAir','sonic','pulse','antiAir','pulse','mortar','sonic','pulse']:
+          ['pulse','sonic','mortar','pulse','sonic','pulse'];
+        reinforcement.forEach(place);
+      }
+    }
+    assert.equal(state.phase,'victory',id+' victory');
+    assert.ok(state.stars>=1,id+' star');
+    grantVictory(p,id,state.stars);
+  }
+  assert.equal(campaignComplete(p),true);
+  assert.equal(p.unlockedSectorIds.length,24);
+  assert.equal(MISSION_IDS.reduce((n,id)=>n+p.sectors[id].bestStars,0)>=24,true);
+  assert.ok(p.resources.materials>startingMaterials,'первые победы выдают ресурсы');
+});
