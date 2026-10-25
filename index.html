@@ -13,7 +13,7 @@
   <div id="app">
     <header class="topbar">
       <div class="brand"><span class="brand-icon" aria-hidden="true">◈</span><div><strong>NOVA<span class="brand-accent">—7</span></strong><small>Экспедиционный корпус</small></div></div>
-      <div class="top-right"><span id="saveIndicator" class="tiny-status" role="status">Готово к экспедиции</span><button id="homeShortcut" class="nav-link" type="button">Главное меню</button></div>
+      <div class="top-right"><span id="saveIndicator" class="tiny-status" role="status">Готово к экспедиции</span><button id="archiveShortcut" class="nav-link" type="button">Архив</button><button id="settingsShortcut" class="nav-link" type="button">Настройки</button><button id="homeShortcut" class="nav-link" type="button">Главное меню</button></div>
     </header>
 
     <main>
@@ -84,6 +84,28 @@
 
       <section id="screen-results" class="screen">
         <div class="results-card panel"><span class="eyebrow"><span id="resultsSector">ОТЧЁТ ЭКСПЕДИЦИИ // СЕКТОР 01</span></span><div id="resultsBadge" class="results-badge">ОПЕРАЦИЯ ЗАВЕРШЕНА</div><h1 id="resultsTitle">Исследование завершено</h1><div class="result-stars" id="resultsStars">★★★</div><p id="resultDescription"></p><div class="result-stats" id="resultStats"></div><div id="rewardBox" class="reward-box"></div><div class="actions center"><button class="btn primary" id="resultsCamp" type="button">В лагерь</button><button class="btn outline" id="resultsRetry" type="button">Повторить миссию</button></div></div>
+      </section>
+
+      <section id="screen-archive" class="screen">
+        <div class="page-head"><div><span class="eyebrow">НАУЧНЫЙ АРХИВ</span><h1>Журнал экспедиции</h1><p>Открытые отчёты о секторах, известных животных и научных открытиях.</p></div><button class="btn outline" id="archiveBack" type="button">← В лагерь</button></div>
+        <div class="archive-columns">
+          <article class="panel"><h2>Брифинги и рекорды</h2><div id="archiveSectors" class="archive-entries"></div></article>
+          <article class="panel"><h2>Каталог фауны</h2><div id="archiveEnemies" class="archive-entries"></div><p class="hint">Сведения появляются после первой вылазки с участием соответствующего вида.</p></article>
+        </div>
+      </section>
+
+      <section id="screen-settings" class="screen">
+        <div class="page-head"><div><span class="eyebrow">ПАРАМЕТРЫ ИГРЫ</span><h1>Настройки</h1><p>Изменения сохраняются в этом браузере автоматически.</p></div><button class="btn outline" id="settingsBack" type="button">← В лагерь</button></div>
+        <div class="panel settings-panel">
+          <label for="musicVolume">Музыка <strong id="musicValue">0%</strong></label>
+          <input id="musicVolume" type="range" min="0" max="100" step="5" value="0">
+          <p class="hint">Фоновая синтезированная мелодия включается после первого взаимодействия с игрой.</p>
+          <label for="sfxVolume">Звуковые сигналы <strong id="sfxValue">70%</strong></label>
+          <input id="sfxVolume" type="range" min="0" max="100" step="5" value="70">
+          <label class="settings-toggle"><input id="reducedMotion" type="checkbox"> Уменьшить декоративные движения и вспышки</label>
+          <button id="testSound" class="btn outline" type="button">Проверить звук</button>
+          <p class="hint">Аудиосигналы дополняют визуальные сообщения и не используются как единственный источник важной информации.</p>
+        </div>
       </section>
     </main>
     <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
