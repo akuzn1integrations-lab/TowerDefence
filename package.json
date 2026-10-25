@@ -1,13 +1,13 @@
 {
   "name": "towerdefence-nova7",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "description": "Первый вертикальный срез научно-фантастической Tower Defence на чистом JavaScript.",
   "scripts": {
     "start": "node server.js",
     "test": "node --test",
-    "check": "node --check src/config.js && node --check src/model.js && node --check src/progress.js && node --check src/visual.js && node --check src/main.js"
+    "check": "node --check src/config.js && node --check src/model.js && node --check src/progress.js && node --check src/visual.js && node --check src/audio.js && node --check src/main.js"
   },
   "engines": {
     "node": ">=20"
