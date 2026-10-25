@@ -9,13 +9,15 @@ export function createMission(id='sector-01', bonuses={}){
   if(!config)throw Error('Unknown mission '+id);
   return {
     id, config, phase:'preparation', time:0, waveIndex:-1, wave:null,
-    supply:config.startSupply+(bonuses.logistics?100:0),
-    targetHp:config.objective.maxHp, targetDamage:0, science:0,
+    supply:config.startSupply+(bonuses.logistics?100:0)+(bonuses.survival?250:0),
+    targetHp:config.objective.maxHp, targetDamage:0, science:0, relayIndex:0,
     towers:[], traps:[], units:[], enemies:[], effects:[], nextId:1, kills:0,
     paused:false, stars:0, outcomeReason:'', deployedDrones:0, destroyedDrones:0,
-    bonuses:{precision:!!bonuses.precision,capacitor:!!bonuses.capacitor,logistics:!!bonuses.logistics},
+    bonuses:{precision:!!bonuses.precision,capacitor:!!bonuses.capacitor,logistics:!!bonuses.logistics,
+      cooling:!!bonuses.cooling,droneArmor:!!bonuses.droneArmor,resonance:!!bonuses.resonance,
+      medtech:!!bonuses.medtech,survival:!!bonuses.survival,lastStand:!!bonuses.lastStand},
     team:config.objective.groupHp?{
-      hp:config.objective.groupHp,maxHp:config.objective.groupHp,progress:0,stopsDone:[],
+      hp:Math.round(config.objective.groupHp*(bonuses.medtech?1.25:1)),maxHp:Math.round(config.objective.groupHp*(bonuses.medtech?1.25:1)),progress:0,stopsDone:[],
       position:fromCell(config.map.researchPath[0]),working:0,atDestination:false,damageTaken:0
     }:null
   };
@@ -29,7 +31,7 @@ export function canBuild(state,type,col,row){
   if(!kind)return {ok:false,reason:'Неизвестное устройство'};
   if(!state.config.allowed[kind==='tower'?'towers':kind==='trap'?'traps':'units'].includes(type))return {ok:false,reason:'Устройство ещё недоступно'};
   const equipment=kind==='tower'?TOWERS[type]:kind==='trap'?TRAPS[type]:UNITS[type];
-  if(state.supply<equipment.cost[0] && kind==='tower' || state.supply<(kind==='tower'?equipment.cost[0]:equipment.cost))return {ok:false,reason:'Недостаточно энергии снабжения'};
+  if(state.supply<(kind==='tower'?equipment.cost[0]:equipment.cost))return {ok:false,reason:'Недостаточно энергии снабжения'};
   const key=cellKey(col,row);
   const road=keys(Object.values(state.config.map.routes).flat());
   if(kind==='tower'){
@@ -41,7 +43,7 @@ export function canBuild(state,type,col,row){
     if(!keys(state.config.map.trapCells).has(key))return {ok:false,reason:'Ловушка ставится только на тропу'};
     if(state.traps.some(o=>o.col===col&&o.row===row))return {ok:false,reason:'Здесь уже стоит ловушка'};
   }else{
-    if(type==='drone' && state.units.filter(u=>u.type==='drone'&&u.hp>0).length>=UNITS.drone.limit)return {ok:false,reason:'Лимит: 2 активных дрона'};
+    if(state.units.filter(u=>u.type===type&&u.hp>0).length>=equipment.limit)return {ok:false,reason:'Достигнут лимит отрядов: '+equipment.limit};
   }
   return {ok:true};
 }
@@ -64,7 +66,9 @@ export function build(state,type,col,row){
   const item={id:state.nextId++,type,col,row};
   if(kind==='tower'){Object.assign(item,{level:1,cooldown:0,spent:price});state.towers.push(item);}
   else if(kind==='trap'){Object.assign(item,{charges:base.charges,affected:new Set()});state.traps.push(item);}
-  else{Object.assign(item,{x:col+.5,y:row+.5,to:{x:col+.5,y:row+.5},hp:base.maxHp,maxHp:base.maxHp,cooldown:0});state.units.push(item);state.deployedDrones++;}
+  else{const maxHp=Math.round(base.maxHp*(state.bonuses.droneArmor?1.35:1));
+    Object.assign(item,{x:col+.5,y:row+.5,to:{x:col+.5,y:row+.5},hp:maxHp,maxHp,cooldown:0});
+    state.units.push(item);if(type==='drone')state.deployedDrones++;}
   state.supply-=price;
   return {ok:true,item};
 }
@@ -114,12 +118,12 @@ function inflict(state,e,amount,kind='kinetic',piercing=0){
   if(e.hp<=0){e.alive=false;state.supply+=ENEMIES[e.type].reward;state.kills++;return true;}
   return false;
 }
-function splash(state,x,y,damage,radius,kind,piercing=0){
-  for(const e of state.enemies)if(e.alive&&!ENEMIES[e.type].air&&dist({x,y},e)<=radius+EPS)inflict(state,e,damage,kind,piercing);
+function splash(state,x,y,damage,radius,kind,piercing=0,includeAir=false){
+  for(const e of state.enemies)if(e.alive&&(includeAir||!ENEMIES[e.type].air)&&dist({x,y},e)<=radius+EPS)inflict(state,e,damage,kind,piercing);
 }
-function doAttack(state,source,enemy,damage,kind,piercing=0,area=0){
+function doAttack(state,source,enemy,damage,kind,piercing=0,area=0,includeAir=false){
   const x=enemy.x,y=enemy.y;
-  if(area)splash(state,x,y,damage,area,kind,piercing);
+  if(area)splash(state,x,y,damage,area,kind,piercing,includeAir);
   else inflict(state,enemy,damage,kind,piercing);
   state.effects.push({x:source.x,y:source.y,tx:x,ty:y,life:.14});
 }
@@ -127,7 +131,9 @@ function rangeFor(t){return TOWERS[t.type].range*(t.level>=2?1.1:1);}
 function damageFor(state,t){
   const d=TOWERS[t.type],lv=t.level===3?1.625:t.level===2?1.25:1;
   return d.damage*lv*(d.kind==='kinetic'&&state.bonuses.precision?1.1:1)*
-    (d.kind==='energy'&&state.bonuses.capacitor?1.15:1);
+    (d.kind==='energy'&&state.bonuses.capacitor?1.15:1)*
+    (t.type==='sonic'&&state.bonuses.resonance?1.15:1)*
+    (state.bonuses.lastStand?1.15:1);
 }
 export function towerRange(t){return rangeFor(t);}
 function shoot(state,dt){
@@ -136,11 +142,15 @@ function shoot(state,dt){
     t.cooldown=Math.max(-.05,t.cooldown-dt);
     if(t.cooldown>0)continue;
     const enemies=state.enemies.filter(e=>e.alive&&
-      (info.targets==='air')===ENEMIES[e.type].air&&
+      (info.targets==='both'||(info.targets==='air')===ENEMIES[e.type].air)&&
       dist(origin,e)<=range+EPS&&dist(origin,e)>=(info.minRange||0)-EPS);
     enemies.sort((a,b)=>b.progress-a.progress||a.id-b.id);
     if(!enemies.length)continue;
-    doAttack(state,origin,enemies[0],damageFor(state,t),info.kind,info.piercing||0,info.splash||0);
+    doAttack(state,origin,enemies[0],damageFor(state,t),info.kind,info.piercing||0,info.splash||0,info.targets==='both');
+    if(info.slow && enemies[0].alive){
+      enemies[0].slowed=Math.max(enemies[0].slowed,info.slowDuration*(state.bonuses.cooling?1.15:1));
+      enemies[0].slowAmount=Math.max(enemies[0].slowAmount,info.slow);
+    }
     t.cooldown=1/(info.rate*(t.level===3?1.1:1));
   }
 }
@@ -153,7 +163,7 @@ function trapEffects(state,dt){
       if(dist(point,e)>.55)continue;
       trap.affected.add(e.id);trap.charges--;
       if(trap.type==='mine')splash(state,point.x,point.y,info.damage,info.radius,'energy');
-      else {e.slowed=Math.max(e.slowed,info.duration);e.slowAmount=Math.max(e.slowAmount,info.slow);}
+      else if(!ENEMIES[e.type].boss){e.slowed=Math.max(e.slowed,info.duration);e.slowAmount=Math.max(e.slowAmount,info.slow);}
       state.effects.push({x:point.x,y:point.y,tx:point.x,ty:point.y,life:.3,blast:true});
     }
   }
@@ -163,9 +173,19 @@ function moveDrone(state,u,dt){
   const info=UNITS[u.type];
   const d=dist(u,u.to);
   if(d>EPS){const step=Math.min(d,info.speed*dt);u.x+=(u.to.x-u.x)/d*step;u.y+=(u.to.y-u.y)/d*step;}
+  if(info.repairPerSecond){
+    const repair=info.repairPerSecond*dt;
+    const target=state.config.map.target;
+    if(dist(u,target)<=info.range)state.targetHp=Math.min(state.config.objective.maxHp,state.targetHp+repair);
+    if(state.team&&dist(u,state.team.position)<=info.range)
+      state.team.hp=Math.min(state.team.maxHp,state.team.hp+repair);
+    for(const ally of state.units)if(ally.hp>0&&ally.id!==u.id&&dist(u,ally)<=info.range)
+      ally.hp=Math.min(ally.maxHp,ally.hp+repair);
+    return;
+  }
   u.cooldown=Math.max(-.05,u.cooldown-dt);
   if(u.cooldown>0)return;
-  const enemies=state.enemies.filter(e=>e.alive&&!ENEMIES[e.type].air&&dist(u,e)<=info.range)
+  const enemies=state.enemies.filter(e=>e.alive&&(info.targets==='air'||!ENEMIES[e.type].air)&&dist(u,e)<=info.range)
     .sort((a,b)=>b.progress-a.progress||a.id-b.id);
   if(enemies.length){doAttack(state,u,enemies[0],info.damage,'energy');u.cooldown=1/info.rate;}
 }
@@ -196,7 +216,9 @@ function moveEnemies(state,dt){
     const chase=team&&!e.chasing&&dist(e,team.position)<2.4;
     if(chase)e.chasing=true;
     const target=e.chasing&&team?team.position:null;
-    const step=info.speed*dt*(e.slowed>0?1-e.slowAmount:1);
+    const aura=state.enemies.some(other=>other.alive&&other.id!==e.id&&ENEMIES[other.type].aura&&
+      dist(e,other)<=ENEMIES[other.type].aura)?1.15:1;
+    const step=info.speed*dt*aura*(e.slowed>0?1-e.slowAmount:1);
     if(e.slowed>0){e.slowed=Math.max(0,e.slowed-dt);if(e.slowed===0)e.slowAmount=0;}
     if(target){
       const d=dist(e,target);
@@ -230,7 +252,7 @@ function moveEnemies(state,dt){
     const near=state.units.filter(u=>u.hp>0&&dist(e,u)<.5);
     for(const unit of near){unit.hp=Math.max(0,unit.hp-info.damage*dt*.55);}
   }
-  for(const unit of state.units)if(unit.hp===0&&!unit.countedDeath){unit.countedDeath=true;state.destroyedDrones++;}
+  for(const unit of state.units)if(unit.hp===0&&!unit.countedDeath){unit.countedDeath=true;if(unit.type==='drone')state.destroyedDrones++;}
 }
 function objectiveStep(state,dt){
   const obj=state.config.objective;
@@ -240,6 +262,14 @@ function objectiveStep(state,dt){
     if(!unsafe)state.science=Math.min(obj.duration,state.science+dt);
   } else if(obj.type==='remote'){
     if(state.team.atDestination)state.science=Math.min(obj.duration,state.science+dt);
+  } else if(obj.type==='relay'){
+    const sites=state.config.map.relaySites,at=sites[state.relayIndex];
+    if(at){
+      const point=fromCell(at);
+      const threatened=state.enemies.some(e=>e.alive&&dist(e,point)<=(obj.relayRadius||1.6));
+      if(!threatened)state.science=Math.min(obj.duration,state.science+dt);
+      state.relayIndex=Math.min(sites.length,Math.floor((state.science+EPS)/(obj.duration/sites.length)));
+    }
   } else if(obj.type==='escort' && state.team.atDestination){state.science=1;}
 }
 export function objectiveProgress(state){
