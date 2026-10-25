@@ -131,7 +131,7 @@ function settings(){
   show('settings');
 }
 function map(){
-  const root=$('sectorNodes');root.replaceChildren();
+  const root=$('sectorNodes'),savedScroll=root.scrollTop;root.replaceChildren();
   let chapter='';
   let chapterGrid=null;
   for(const id of MISSION_IDS){
@@ -164,6 +164,7 @@ function map(){
   $('mapBrief').disabled=!available;
   $text('mapPlay',available?(rec.victories?'Повторить миссию':'Начать миссию'):'Сектор ещё закрыт');
   $text('mapNotice',available?(rec.victories?'Сектор пройден, допускаются неограниченные повторы.':'Сектор доступен для первой вылазки.'):'Завершите предыдущий сектор, чтобы открыть эту область.');
+  root.scrollTop=savedScroll;
   show('map');
 }
 function briefing({toPlay=false,returnTo='map'}={}){
