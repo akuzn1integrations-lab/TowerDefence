@@ -294,8 +294,8 @@ test('три ретранслятора активируются по очере
   assert.equal(mission.config.objective.type,'relay');
   assert.equal(mission.relayIndex,0);
   assert.equal(objectiveProgress(mission),0);
-  startWave(mission);
-  for(let i=0;i<1300;i++)updateMission(mission,1/60);
+  mission.phase='combat'; // Проверяем научный модуль отдельно от расписания волн.
+  for(let i=0;i<1800;i++)updateMission(mission,1/60);
   assert.ok(mission.relayIndex>=1,'первый ретранслятор активирован');
   const last=mission.science;
   mission.phase='intermission';
