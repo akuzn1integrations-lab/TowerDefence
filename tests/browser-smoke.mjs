@@ -82,7 +82,7 @@ try{
   await run("document.querySelector('#quitConfirm').click()");
   await check("document.querySelector('#screen-camp').classList.contains('active')",'exit battle');
   await run("document.querySelector('#archiveShortcut').click()");
-  await check("document.querySelectorAll('#archiveSectors .archive-entry').length===6",'archive');
+  await check("document.querySelectorAll('#archiveSectors .archive-entry').length===24",'24 archived sector records');
   await run("document.querySelector('#settingsShortcut').click()");
   await check("document.querySelector('#screen-settings').classList.contains('active')",'settings');
   await run("(()=>{const x=document.querySelector('#sfxVolume');x.value='25';x.dispatchEvent(new Event('input',{bubbles:true}));return true})()");
