@@ -41,9 +41,18 @@ function makeMap(width,height,corners,other={},researchPath=[]){
   const routes={west:path(corners)};
   for(const [id,points] of Object.entries(other)) routes[id]=path(points);
   const road=new Set(Object.values(routes).flatMap(r=>r.map(c=>cellKey(c.col,c.row))));
+  const occupiedByResearchers=new Set();
+  for(let i=0;i<researchPath.length-1;i++){
+    const [a,b]=[researchPath[i],researchPath[i+1]],steps=Math.max(Math.abs(b[0]-a[0]),Math.abs(b[1]-a[1]))*4||1;
+    for(let j=0;j<=steps;j++){
+      const ratio=j/steps,col=Math.round(a[0]+(b[0]-a[0])*ratio),row=Math.round(a[1]+(b[1]-a[1])*ratio);
+      occupiedByResearchers.add(cellKey(col,row));
+    }
+  }
+  for(const [col,row] of researchPath)occupiedByResearchers.add(cellKey(col,row));
   const build=[];
   for(let row=1;row<height-1;row++)for(let col=1;col<width-1;col++){
-    if(road.has(cellKey(col,row)))continue;
+    if(road.has(cellKey(col,row))||occupiedByResearchers.has(cellKey(col,row)))continue;
     const near=Object.values(routes).some(r=>r.some(c=>Math.abs(c.col-col)+Math.abs(c.row-row)<=2));
     if(near && (col+row)%5!==0)build.push({col,row});
   }
@@ -164,6 +173,11 @@ const missions=[
     ]
   }
 ];
+// Keep the first sector's carefully authored 18 building slots from its design specification.
+missions[0].map.buildCells=[
+  [1,3],[2,4],[3,6],[5,6],[6,4],[7,2],[7,5],[8,6],[10,2],
+  [10,6],[11,8],[12,5],[13,6],[15,6],[16,4],[17,3],[18,7],[5,2]
+].map(([col,row])=>({col,row}));
 export const MISSIONS=Object.fromEntries(missions.map(m=>[m.id,m]));
 export const MISSION_IDS=missions.map(m=>m.id);
 export const sectorId=n=>'sector-'+String(n).padStart(2,'0');
