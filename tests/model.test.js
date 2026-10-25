@@ -14,10 +14,10 @@ import {
   purchaseResearch, researchAvailable, campaignComplete, unlockedEquipment, SAVE_KEY
 } from '../src/progress.js';
 
-test('6 законченных секторов с несколькими биомами и валидными маршрутами',()=>{
+test('24 законченных сектора в восьми биомах с валидными маршрутами',()=>{
   assert.equal(validateContent(),true);
-  assert.equal(MISSION_IDS.length,6);
-  assert.equal(new Set(MISSION_IDS.map(id=>MISSIONS[id].biome)).size,2);
+  assert.equal(MISSION_IDS.length,24);
+  assert.equal(new Set(MISSION_IDS.map(id=>MISSIONS[id].biome)).size,8);
   for(const id of MISSION_IDS){
     const m=createMission(id);
     assert.equal(hasGroundPaths(m),true);
@@ -29,7 +29,7 @@ test('6 законченных секторов с несколькими био
   }
 });
 
-test('карта прогрессии: следующий сектор открывается, после 6 побед глава завершена',()=>{
+test('карта прогрессии: 24 последовательные победы завершают планетарную кампанию',()=>{
   const p=newProgress();
   assert.deepEqual(p.unlockedSectorIds,['sector-01']);
   for(let i=0;i<MISSION_IDS.length;i++){
@@ -40,8 +40,8 @@ test('карта прогрессии: следующий сектор откр�
     if(i<MISSION_IDS.length-1)assert.ok(p.unlockedSectorIds.includes(MISSION_IDS[i+1]));
   }
   assert.equal(campaignComplete(p),true);
-  assert.equal(p.unlockedSectorIds.length,6);
-  assert.deepEqual(unlockedEquipment(p).towers,['kinetic','pulse','mortar','antiAir']);
+  assert.equal(p.unlockedSectorIds.length,24);
+  assert.deepEqual(unlockedEquipment(p).towers,['kinetic','pulse','mortar','antiAir','cryo','sonic']);
 });
 
 test('первая и повторная победы имеют разные награды без дублирования, рекорд не снижается',()=>{
@@ -57,7 +57,7 @@ test('миграция старых сохранений с сохранение
   const old={schemaVersion:1,sectors:{'sector-01':{briefingSeen:true,bestStars:3,firstVictoryClaimed:true,victories:1,attempts:2}},
     resources:{materials:320,data:50},research:{precision:true}};
   const migrated=sanitizeProgress(old);
-  assert.equal(migrated.schemaVersion,2);
+  assert.equal(migrated.schemaVersion,3);
   assert.equal(migrated.sectors['sector-01'].bestStars,3);
   assert.equal(migrated.sectors['sector-02'].bestStars,0);
   assert.equal(migrated.resources.materials,320);
@@ -138,7 +138,7 @@ test('у каждого типа миссии своя научная цель',
     seen.add(m.config.objective.type);
     assert.equal(objectiveProgress(m),0);
   }
-  assert.deepEqual([...seen].sort(),['defend','escort','hold','remote']);
+  assert.deepEqual([...seen].sort(),['defend','escort','hold','relay','remote']);
 });
 
 test('звёзды учитывают HP защищаемых объектов и результат вылазки',()=>{
@@ -193,7 +193,7 @@ test('UI содержит все точки динамического упра�
 });
 
 
-test('вся глава 01–06 проходима подряд без обязательного повторного фарма',()=>{
+test('первая глава 01–06 проходима подряд без обязательного повторного фарма',()=>{
   const p=newProgress();
   const strategies={
     'sector-01':{initial:['kinetic','kinetic','kinetic','kinetic'],between:['kinetic']},
@@ -203,7 +203,7 @@ test('вся глава 01–06 проходима подряд без обяз�
     'sector-05':{initial:['antiAir:exit','antiAir','antiAir','pulse:exit','kinetic:exit'],between:['antiAir:exit','pulse:exit']},
     'sector-06':{initial:['antiAir','antiAir:exit','pulse','kinetic','drone:team'],between:['pulse:team','mortar','antiAir:exit']}
   };
-  for(const id of MISSION_IDS){
+  for(const id of MISSION_IDS.slice(0,6)){
     assert.ok(p.unlockedSectorIds.includes(id),'Сектор должен быть доступен: '+id);
     const m=createMission(id),plan=strategies[id];
     function place(option){
@@ -235,8 +235,9 @@ test('вся глава 01–06 проходима подряд без обяз�
     assert.ok(m.stars>=1);
     grantVictory(p,id,m.stars);
   }
-  assert.equal(campaignComplete(p),true);
+  assert.equal(campaignComplete(p),false);
   assert.equal(p.sectors['sector-06'].victories,1);
+  assert.ok(p.unlockedSectorIds.includes('sector-07'));
 });
 
 
