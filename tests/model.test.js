@@ -188,6 +188,8 @@ test('UI содержит все точки динамического упра�
   assert.ok(ids.has('sectorNodes'));
   assert.ok(ids.has('equipmentList'));
   assert.ok(ids.has('objectives'));
+  for(const id of ['screen-archive','screen-settings','archiveSectors','archiveEnemies',
+    'musicVolume','sfxVolume','reducedMotion','commandButton'])assert.ok(ids.has(id),id);
 });
 
 
@@ -235,4 +237,21 @@ test('вся глава 01–06 проходима подряд без обяз�
   }
   assert.equal(campaignComplete(p),true);
   assert.equal(p.sectors['sector-06'].victories,1);
+});
+
+
+test('сохранение звуковых настроек и уменьшения анимаций',()=>{
+  const p=newProgress();
+  p.settings={musicVolume:.35,sfxVolume:.15,reducedMotion:true};
+  const q=sanitizeProgress(p);
+  assert.equal(q.settings.musicVolume,.35);
+  assert.equal(q.settings.sfxVolume,.15);
+  assert.equal(q.settings.reducedMotion,true);
+});
+test('аудиомодуль изолирован от игровой симуляции и корректно работает без Web Audio',async()=>{
+  const {AudioDirector}=await import('../src/audio.js');
+  const audio=new AudioDirector(()=>({musicVolume:0,sfxVolume:0}));
+  assert.doesNotThrow(()=>audio.cue('wave'));
+  assert.doesNotThrow(()=>audio.cue('victory'));
+  audio.dispose();
 });
