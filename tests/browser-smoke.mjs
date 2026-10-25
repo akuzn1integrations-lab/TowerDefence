@@ -63,6 +63,11 @@ try{
   await run("document.querySelector('#toMap').click()");
   await check("document.querySelectorAll('#sectorNodes button').length===24",'24 sectors');
   await check("document.querySelectorAll('#sectorNodes .chapter-block').length===8",'eight biomes');
+  await run("document.querySelectorAll('#sectorNodes button')[23].click()");
+  await check("document.querySelector('#mapPlay').disabled",'last sector locked on new save');
+  await check("document.querySelector('#mapTitle').textContent==='Неизведанная территория'",'no undiscovered spoilers');
+  await run("document.querySelectorAll('#sectorNodes button')[0].click()");
+  await check("document.querySelector('#mapPlay').disabled===false",'first sector unlocked');
   await run("document.querySelector('#mapPlay').click()");
   await check("document.querySelector('#screen-briefing').classList.contains('active')",'briefing');
   await run("document.querySelector('#briefSkip').click()");
