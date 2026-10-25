@@ -161,6 +161,7 @@ function trapEffects(state,dt){
     for(const e of state.enemies){
       if(!e.alive||ENEMIES[e.type].air||trap.charges<=0||trap.affected.has(e.id))continue;
       if(dist(point,e)>.55)continue;
+      if(trap.type==='lure'&&ENEMIES[e.type].boss)continue;
       trap.affected.add(e.id);trap.charges--;
       if(trap.type==='mine')splash(state,point.x,point.y,info.damage,info.radius,'energy');
       else if(!ENEMIES[e.type].boss){e.slowed=Math.max(e.slowed,info.duration);e.slowAmount=Math.max(e.slowAmount,info.slow);}
@@ -216,8 +217,9 @@ function moveEnemies(state,dt){
     const chase=team&&!e.chasing&&dist(e,team.position)<2.4;
     if(chase)e.chasing=true;
     const target=e.chasing&&team?team.position:null;
-    const aura=state.enemies.some(other=>other.alive&&other.id!==e.id&&ENEMIES[other.type].aura&&
-      dist(e,other)<=ENEMIES[other.type].aura)?1.15:1;
+    const aura=state.enemies.reduce((boost,other)=>other.alive&&other.id!==e.id&&
+      ENEMIES[other.type].aura&&dist(e,other)<=ENEMIES[other.type].aura?
+      Math.max(boost,1+ENEMIES[other.type].auraSpeed):boost,1);
     const step=info.speed*dt*aura*(e.slowed>0?1-e.slowAmount:1);
     if(e.slowed>0){e.slowed=Math.max(0,e.slowed-dt);if(e.slowed===0)e.slowAmount=0;}
     if(target){
