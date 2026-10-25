@@ -1,97 +1,99 @@
-import { MISSION_REWARDS, RESEARCH } from './config.js';
-export const SAVE_KEY = 'towerdefence-nova7-v1';
+import { MISSION_IDS, MISSIONS, RESEARCH, preceding } from './config.js';
 
-export function newProgress() {
+// Retain existing key so players of the first vertical slice keep their progress.
+export const SAVE_KEY='towerdefence-nova7-v1';
+const safeInt=(v)=>Number.isSafeInteger(v)&&v>=0?Math.min(v,100000000):0;
+const record=()=>({briefingSeen:false,firstVictoryClaimed:false,bestStars:0,victories:0,attempts:0});
+export function newProgress(){
   return {
-    schemaVersion: 1,
-    unlockedSectorIds: ['sector-01'],
-    sectors: {
-      'sector-01': { briefingSeen: false, firstVictoryClaimed: false, bestStars: 0, victories: 0, attempts: 0 }
-    },
-    resources: { materials: 0, data: 0 },
-    research: {},
-    settings: { musicVolume: 0, sfxVolume: 0.7, reducedMotion: false }
+    schemaVersion:2,campaignId:'nova7-mvp',
+    sectors:Object.fromEntries(MISSION_IDS.map(id=>[id,record()])),
+    unlockedSectorIds:['sector-01'],
+    resources:{materials:0,data:0},
+    research:{},settings:{musicVolume:0,sfxVolume:.7,reducedMotion:false}
   };
 }
-export function sanitizeProgress(candidate) {
-  const safe = newProgress();
-  if (!candidate || typeof candidate !== 'object' || candidate.schemaVersion !== 1) return safe;
-  const section = candidate.sectors?.['sector-01'] || {};
-  const cleanNumber = (value, max = 100000000) =>
-    Number.isSafeInteger(value) && value >= 0 ? Math.min(value,max) : 0;
-  safe.sectors['sector-01'] = {
-    briefingSeen: section.briefingSeen === true,
-    firstVictoryClaimed: section.firstVictoryClaimed === true,
-    bestStars: Math.min(cleanNumber(section.bestStars), 3),
-    victories: cleanNumber(section.victories),
-    attempts: cleanNumber(section.attempts)
-  };
-  safe.resources = {
-    materials: cleanNumber(candidate.resources?.materials),
-    data: cleanNumber(candidate.resources?.data)
-  };
-  safe.research.precision = candidate.research?.precision === true;
-  if (safe.sectors['sector-01'].victories > 0) {
-    safe.sectors['sector-01'].firstVictoryClaimed = true;
-    safe.unlockedSectorIds.push('sector-02');
+export function sanitizeProgress(input){
+  const p=newProgress();
+  if(!input||typeof input!=='object'||![1,2].includes(input.schemaVersion))return p;
+  for(const id of MISSION_IDS){
+    const old=input.sectors?.[id]||{};
+    const wins=safeInt(old.victories);
+    p.sectors[id]={
+      briefingSeen:old.briefingSeen===true,firstVictoryClaimed:old.firstVictoryClaimed===true||wins>0,
+      bestStars:Math.min(3,safeInt(old.bestStars)),victories:wins,attempts:safeInt(old.attempts)
+    };
   }
-  safe.settings.reducedMotion = candidate.settings?.reducedMotion === true;
-  return safe;
+  p.resources={materials:safeInt(input.resources?.materials),data:safeInt(input.resources?.data)};
+  for(const id of Object.keys(RESEARCH))p.research[id]=input.research?.[id]===true;
+  p.settings.reducedMotion=input.settings?.reducedMotion===true;
+  if(Number.isFinite(input.settings?.sfxVolume))
+    p.settings.sfxVolume=Math.max(0,Math.min(1,input.settings.sfxVolume));
+  if(Number.isFinite(input.settings?.musicVolume))
+    p.settings.musicVolume=Math.max(0,Math.min(1,input.settings.musicVolume));
+  // Unlocks are derived from actual cleared missions, preventing corrupted skips.
+  for(const id of MISSION_IDS.slice(1)){
+    if(p.sectors[preceding(id)].victories>0)p.unlockedSectorIds.push(id);
+    else break;
+  }
+  return p;
 }
-export function loadProgress(storage) {
-  try {
-    const source = storage ?? globalThis.localStorage;
-    const raw = source.getItem(SAVE_KEY);
-    if (!raw) return { progress: newProgress(), warning: '' };
-    const parsed = JSON.parse(raw);
-    if (!parsed || parsed.schemaVersion !== 1) {
-      return { progress: newProgress(), warning: 'Сохранение другой версии. Начата новая экспедиция.' };
-    }
-    return { progress: sanitizeProgress(parsed), warning: '' };
-  } catch (_) {
-    return { progress: newProgress(), warning: 'Не удалось прочитать сохранение. Прогресс этой сессии может не сохраняться.' };
+export function loadProgress(storage){
+  try{
+    const raw=(storage??globalThis.localStorage).getItem(SAVE_KEY);
+    if(!raw)return {progress:newProgress(),warning:''};
+    const parsed=JSON.parse(raw);
+    if(!parsed||![1,2].includes(parsed.schemaVersion))
+      return {progress:newProgress(),warning:'Неподдерживаемая версия сохранения. Начата новая экспедиция.'};
+    const migrated=parsed.schemaVersion===1;
+    return {progress:sanitizeProgress(parsed),warning:migrated?'Сохранение первой версии перенесено в MVP.':''};
+  }catch{
+    return {progress:newProgress(),warning:'Повреждённое или недоступное сохранение. Прогресс этой сессии может не сохраняться.'};
   }
 }
-export function storeProgress(progress, storage) {
-  try {
-    const source = storage ?? globalThis.localStorage;
-    source.setItem(SAVE_KEY, JSON.stringify(sanitizeProgress(progress)));
-    return true;
-  } catch (_) { return false; }
+export function storeProgress(p,storage){
+  try{(storage??globalThis.localStorage).setItem(SAVE_KEY,JSON.stringify(sanitizeProgress(p)));return true;}
+  catch{return false;}
 }
-export function markBriefingSeen(progress) {
-  progress.sectors['sector-01'].briefingSeen = true;
-}
-export function markAttempt(progress) {
-  progress.sectors['sector-01'].attempts++;
-}
-// Вызывается один раз из обработчика завершения миссии, а не из рендера итогов.
-export function grantVictory(progress, stars) {
-  const sector = progress.sectors['sector-01'];
-  if (!Number.isInteger(stars) || stars < 1 || stars > 3) throw new Error('Некорректные звёзды');
-  const isFirst = !sector.firstVictoryClaimed;
-  const rewards = {
-    materials: MISSION_REWARDS.repeatable.materials + (isFirst ? MISSION_REWARDS.first.materials : 0),
-    data: MISSION_REWARDS.repeatable.data + (isFirst ? MISSION_REWARDS.first.data : 0)
+export function markBriefingSeen(p,id){p.sectors[id].briefingSeen=true;}
+export function markAttempt(p,id){p.sectors[id].attempts++;}
+export function grantVictory(p,id,stars){
+  if(!MISSIONS[id]||!Number.isInteger(stars)||stars<1||stars>3)throw Error('Invalid mission result');
+  const rec=p.sectors[id],first=!rec.firstVictoryClaimed,r=MISSIONS[id].rewards;
+  const prize={
+    materials:r.materials+(first?r.firstMaterials:0),
+    data:r.data+(first?r.firstData:0),
+    first
   };
-  sector.bestStars = Math.max(sector.bestStars, stars);
-  sector.victories++;
-  sector.firstVictoryClaimed = true;
-  progress.resources.materials += rewards.materials;
-  progress.resources.data += rewards.data;
-  if (!progress.unlockedSectorIds.includes('sector-02')) progress.unlockedSectorIds.push('sector-02');
-  return { ...rewards, first: isFirst };
+  rec.bestStars=Math.max(rec.bestStars,stars);
+  rec.victories++;rec.firstVictoryClaimed=true;
+  p.resources.materials+=prize.materials;
+  p.resources.data+=prize.data;
+  const next=MISSION_IDS[MISSION_IDS.indexOf(id)+1];
+  if(next&&!p.unlockedSectorIds.includes(next))p.unlockedSectorIds.push(next);
+  return prize;
 }
-export function purchaseResearch(progress, id) {
-  const item = RESEARCH[id];
-  if (!item) return { ok:false, reason:'Неизвестная технология' };
-  if (progress.research[id]) return { ok:false, reason:'Технология уже изучена' };
-  if (progress.sectors['sector-01'].victories < 1) return { ok:false, reason:'Сначала завершите первую миссию' };
-  if (progress.resources.materials < item.materials || progress.resources.data < item.data) {
-    return { ok:false, reason:'Недостаточно ресурсов' };
-  }
-  progress.resources.materials -= item.materials;
-  progress.resources.data -= item.data;
-  progress.research[id] = true;
-  return { ok:true };
+export function researchAvailable(p,id){
+  const r=RESEARCH[id];
+  if(!r)return {ok:false,reason:'Неизвестная технология'};
+  if(p.research[id])return {ok:false,reason:'Технология уже изучена'};
+  if(p.sectors[MISSION_IDS[r.after-1]].victories===0)return {ok:false,reason:'Доступно после сектора '+r.after};
+  if(p.resources.materials<r.materials||p.resources.data<r.data)return {ok:false,reason:'Недостаточно ресурсов'};
+  return {ok:true};
+}
+export function purchaseResearch(p,id){
+  const can=researchAvailable(p,id);if(!can.ok)return can;
+  const r=RESEARCH[id];
+  p.resources.materials-=r.materials;p.resources.data-=r.data;
+  p.research[id]=true;
+  return {ok:true};
+}
+export function campaignComplete(p){return MISSION_IDS.every(id=>p.sectors[id].victories>0);}
+export function unlockedEquipment(p){
+  const count=MISSION_IDS.filter(id=>p.sectors[id].victories>0).length;
+  return {
+    towers:['kinetic',...(count>=1?['pulse']:[]),...(count>=3?['mortar']:[]),...(count>=4?['antiAir']:[])],
+    traps:count>=2?['mine','slow']:[],
+    units:count>=2?['drone']:[]
+  };
 }
