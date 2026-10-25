@@ -16,7 +16,7 @@ let progress=loaded.progress, currentScreen='home', mission=null, battlefield=nu
 let mode='build', selectedCell=null, selectedTowerId=null;
 let briefingIndex=0, briefingAfterPlay=false, briefingReturn='map';
 let paused=false, speed=1, lastFrame=0, accumulator=0, resolved=false, attemptCounted=false;
-let toastTimer=0;
+let toastTimer=0, lastHudAt=0;
 const STEP=1/60, MAX_STEPS=8;
 const touchHint='Тапните по подсвеченной площадке, затем нажмите «Построить».';
 
@@ -107,7 +107,7 @@ function playFromMap(){
 }
 function launchMission(){
   mission=createMission({damageBonus:progress.research.precision?0.1:0});
-  paused=false;speed=1;accumulator=0;lastFrame=0;
+  paused=false;speed=1;accumulator=0;lastFrame=0;lastHudAt=0;
   mode='build';selectedCell=null;selectedTowerId=null;resolved=false;attemptCounted=false;
   $('buildMode').classList.add('active');$('inspectMode').classList.remove('active');
   $('fieldTip').textContent=touchHint;
@@ -266,7 +266,7 @@ function tick(now){
   }
   battlefield.render(mission,{selectedCell,selectedTowerId,mode,paused});
   if(mission.phase==='victory'||mission.phase==='defeat')settleMission();
-  else updateHud();
+  else if(now-lastHudAt>=100){lastHudAt=now;updateHud();}
 }
 function bind(id,handler){$(id).addEventListener('click',handler);}
 bind('continueButton',goCamp);
@@ -275,6 +275,13 @@ bind('homeShortcut',()=>{
   else displayScreen('home');
 });
 bind('homeHelp',()=>$('helpDialog').showModal());
+bind('newGameButton',()=>{
+  if(!window.confirm('Начать новую экспедицию? Все накопленные ресурсы, звёзды и исследования будут сброшены.'))return;
+  progress=newProgress();mission=null;save();
+  $('continueButton').textContent='Начать экспедицию';
+  notify('Начата новая экспедиция.');
+  goCamp();
+});
 bind('toMap',goMap);bind('mapBack',goCamp);bind('sector01',()=>notify('Выбран сектор 01. Нажмите «Начать миссию» справа.'));
 bind('mapPlay',playFromMap);
 bind('mapBrief',()=>showBriefing({afterPlay:false,returnTo:'map'}));
