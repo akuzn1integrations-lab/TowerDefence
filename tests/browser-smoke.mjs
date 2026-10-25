@@ -60,7 +60,8 @@ try{
   await run("document.querySelector('#continueButton').click()");
   await check("document.querySelector('#screen-camp').classList.contains('active')",'camp');
   await run("document.querySelector('#toMap').click()");
-  await check("document.querySelectorAll('#sectorNodes button').length===6",'six sectors');
+  await check("document.querySelectorAll('#sectorNodes button').length===24",'24 sectors');
+  await check("document.querySelectorAll('#sectorNodes .chapter-block').length===8",'eight biomes');
   await run("document.querySelector('#mapPlay').click()");
   await check("document.querySelector('#screen-briefing').classList.contains('active')",'briefing');
   await run("document.querySelector('#briefSkip').click()");
