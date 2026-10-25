@@ -8,10 +8,14 @@ import {
   grantVictory, purchaseResearch, researchAvailable, campaignComplete
 } from './progress.js';
 import { Battlefield } from './visual.js';
+import { AudioDirector } from './audio.js';
 
 const $=id=>document.getElementById(id);
 const screens=[...document.querySelectorAll('.screen')];
 let {progress,warning:loadWarning}=loadProgress();
+const audio=new AudioDirector(()=>progress.settings);
+let settingsReturn='camp';
+document.documentElement.classList.toggle('reduced-motion',progress.settings.reducedMotion);
 let screen='home', selectedMission='sector-01', mission=null, field=null;
 let briefIndex=0,briefReturn='map',briefToPlay=false;
 let selectedType='kinetic',selectedCell=null,selectedId=null,mode='build',moveCommand=false;
@@ -68,7 +72,7 @@ function camp(){
     button.type='button';const availability=researchAvailable(progress,id);button.disabled=!availability.ok;
     button.addEventListener('click',()=>{
       const result=purchaseResearch(progress,id);
-      if(result.ok){save();toast('Технология «'+r.name+'» изучена.');camp();}
+      if(result.ok){save();audio.cue('research');toast('Технология «'+r.name+'» изучена.');camp();}
       else toast(result.reason);
     });
     body.append(button);
@@ -77,6 +81,54 @@ function camp(){
   }
   $text('researchHint','Технологии открываются по мере прохождения секторов. ПВО перед сектором 05 разблокируется автоматически.');
   show('camp');
+}
+function archive(){
+  const sectorRoot=$('archiveSectors'),enemyRoot=$('archiveEnemies');
+  sectorRoot.replaceChildren();enemyRoot.replaceChildren();
+  for(const id of MISSION_IDS){
+    const def=MISSIONS[id],rec=record(id),unlocked=isUnlocked(id);
+    const item=element('div','archive-entry');
+    const head=element('div','archive-head');
+    head.append(element('strong','',String(def.number).padStart(2,'0')+' · '+(unlocked?def.name:'Неизвестный сектор')),
+      element('small','',unlocked?'★'.repeat(rec.bestStars)+'☆'.repeat(3-rec.bestStars):'🔒'));
+    item.append(head);
+    if(unlocked){
+      item.append(element('p','',def.summary));
+      const b=element('button','btn outline','Повторить брифинг');
+      b.type='button';
+      b.addEventListener('click',()=>{
+        if(mission)return toast('Откройте архивный брифинг после завершения текущей вылазки.');
+        selectedMission=id;briefing({returnTo:'archive'});
+      });
+      item.append(b);
+    }else item.append(element('p','','Информация станет доступна после исследования предыдущего сектора.'));
+    sectorRoot.append(item);
+  }
+  const encountered=new Set();
+  for(const id of MISSION_IDS){
+    if(record(id).attempts>0 || record(id).victories>0){
+      for(const wave of MISSIONS[id].waves)for(const group of wave.groups)encountered.add(group.type);
+    }
+  }
+  for(const [id,def] of Object.entries(ENEMIES)){
+    const discovered=encountered.has(id);
+    const item=element('div','archive-entry');
+    item.append(element('strong','',discovered?def.name:'Неизвестный вид'));
+    item.append(element('p','',discovered?
+      'Здоровье: '+def.hp+' · скорость: '+def.speed+' кл/с · '+(def.air?'летающий':'наземный')+
+      (def.kinetic?' · кинетическая броня '+Math.round(def.kinetic*100)+'%':'')+
+      ' · награда за уничтожение: '+def.reward+' ЭС.':'Встретьте существо во время экспедиции, чтобы открыть сведения.'));
+    enemyRoot.append(item);
+  }
+  show('archive');
+}
+function settings(){
+  $text('musicValue',Math.round(progress.settings.musicVolume*100)+'%');
+  $text('sfxValue',Math.round(progress.settings.sfxVolume*100)+'%');
+  $('musicVolume').value=Math.round(progress.settings.musicVolume*100);
+  $('sfxVolume').value=Math.round(progress.settings.sfxVolume*100);
+  $('reducedMotion').checked=progress.settings.reducedMotion;
+  show('settings');
 }
 function map(){
   const root=$('sectorNodes');root.replaceChildren();
@@ -122,9 +174,10 @@ function briefingDone(){
   markBriefingSeen(progress,selectedMission);save();
   if(briefToPlay)launch(selectedMission);
   else if(briefReturn==='mission'&&mission)show('mission');
+  else if(briefReturn==='archive')archive();
   else map();
 }
-function briefingClosed(){if(briefReturn==='mission'&&mission)show('mission');else map();}
+function briefingClosed(){if(briefReturn==='mission'&&mission)show('mission');else if(briefReturn==='archive')archive();else map();}
 function play(){
   if(!isUnlocked(selectedMission))return toast('Этот сектор ещё закрыт');
   if(!record(selectedMission).briefingSeen)briefing({toPlay:true});
@@ -213,21 +266,22 @@ function buildSelected(){
   if(!mission||!selectedCell||mode!=='build')return;
   const result=build(mission,selectedType,selectedCell.col,selectedCell.row);
   if(!result.ok){toast(result.reason);selection();return;}
-  selectedCell=null;selection();hud();
+  audio.cue('build');selectedCell=null;selection();hud();
 }
 function upgradeSelected(){
-  const result=upgrade(mission,selectedId);if(!result.ok)toast(result.reason);
+  const result=upgrade(mission,selectedId);if(!result.ok)toast(result.reason);else audio.cue('build');
   selection();hud();
 }
 function sellSelected(){
   const result=sell(mission,selectedId);
-  if(result.ok){selectedId=null;toast('Возвращено '+result.refund+' ЭС.');}
+  if(result.ok){selectedId=null;audio.cue('select');toast('Возвращено '+result.refund+' ЭС.');}
   else toast(result.reason);
   selection();hud();
 }
 function nextWave(){
   const result=startWave(mission);
   if(!result.ok){toast(result.reason);return;}
+  audio.cue('wave');
   if(!attemptCounted){markAttempt(progress,selectedMission);save();attemptCounted=true;}
   $text('fieldTip','Волна '+(mission.waveIndex+1)+' началась. Следите за приборами и мобильной группой.');
   hud();
@@ -267,6 +321,7 @@ function finishMission(){
   const success=mission.phase==='victory',def=mission.config;
   const prize=success?grantVictory(progress,selectedMission,mission.stars):null;
   if(success)save();
+  audio.cue(success?'victory':'defeat');
   $text('resultsSector','ОТЧЁТ // СЕКТОР '+String(def.number).padStart(2,'0'));
   $text('resultsBadge',success?(campaignComplete(progress)?'ПЕРВАЯ ГЛАВА ЗАВЕРШЕНА':'МИССИЯ ВЫПОЛНЕНА'):'ЭКСПЕДИЦИЯ ОТСТУПИЛА');
   $text('resultsTitle',success?(campaignComplete(progress)?'Карта исследована':def.name+' — успех'):'Задание провалено');
@@ -306,6 +361,38 @@ function tick(now){
   else if(now-lastHud>100){lastHud=now;hud();}
 }
 const on=(id,fn)=>$(id).addEventListener('click',fn);
+on('archiveShortcut',()=>{
+  if(mission)return toast('Архив доступен после завершения вылазки.');
+  archive();
+});
+on('settingsShortcut',()=>{
+  settingsReturn=screen;
+  settings();
+});
+on('archiveBack',camp);
+on('settingsBack',()=>{
+  if(settingsReturn==='mission'&&mission)show('mission');
+  else if(settingsReturn==='briefing')show('briefing');
+  else if(settingsReturn==='map')map();
+  else if(settingsReturn==='archive')archive();
+  else if(settingsReturn==='home')show('home');
+  else camp();
+});
+$('musicVolume').addEventListener('input',e=>{
+  progress.settings.musicVolume=Number(e.target.value)/100;
+  $text('musicValue',e.target.value+'%');
+  audio.startMusic();save();
+});
+$('sfxVolume').addEventListener('input',e=>{
+  progress.settings.sfxVolume=Number(e.target.value)/100;
+  $text('sfxValue',e.target.value+'%');save();
+});
+$('reducedMotion').addEventListener('change',e=>{
+  progress.settings.reducedMotion=e.target.checked;
+  document.documentElement.classList.toggle('reduced-motion',e.target.checked);
+  save();
+});
+on('testSound',()=>audio.cue('test'));
 on('continueButton',camp);
 on('homeShortcut',()=>screen==='mission'?$('quitDialog').showModal():show('home'));
 on('homeHelp',()=>$('helpDialog').showModal());
