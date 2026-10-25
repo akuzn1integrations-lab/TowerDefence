@@ -189,7 +189,7 @@ export class Battlefield {
       if(e.type==='shell'){c.strokeStyle='#fff4d3';c.beginPath();c.arc(p.x,p.y,r*.65,0,Math.PI*2);c.stroke();}
       this.health(p.x,p.y-s*.38,s*.6,e.hp,e.maxHp,'#ffc2a2');
     }
-    for(const e of state.effects){
+    if(!globalThis.document?.documentElement?.classList.contains('reduced-motion'))for(const e of state.effects){
       const from=this.toScreen(e.x,e.y),to=this.toScreen(e.tx,e.ty);
       c.globalAlpha=clamp(e.life/.14,0,1);c.strokeStyle=e.blast?'#ffd997':'#e0ffec';c.lineWidth=2.4;
       c.beginPath();c.moveTo(from.x,from.y);c.lineTo(to.x,to.y);c.stroke();
