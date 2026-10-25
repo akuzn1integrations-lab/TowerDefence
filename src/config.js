@@ -1,4 +1,5 @@
-// Data-driven content of the six-sector MVP. Distances are in map cells; times in simulation seconds.
+import { buildExpansion, EXPANSION_ENEMIES, EXPANSION_TOWERS, EXPANSION_TRAPS, EXPANSION_UNITS, EXPANSION_RESEARCH } from './campaign-24.js';
+// Data-driven content of the 24-sector campaign. Distances are in map cells; times in simulation seconds.
 export const CELL = 64;
 export const ENEMIES = {
   skitter:{name:'Искрошмыг',hp:55,speed:1.2,air:false,kinetic:0,damage:10,reward:10,color:'#ed967b'},
@@ -24,6 +25,11 @@ export const RESEARCH = {
   capacitor:{name:'Энергетический конденсатор',desc:'+15% урона импульсных башен',materials:280,data:30,after:2},
   logistics:{name:'Полевое снабжение',desc:'+100 стартовой ЭС в каждой вылазке',materials:400,data:50,after:3}
 };
+Object.assign(ENEMIES,EXPANSION_ENEMIES);
+Object.assign(TOWERS,EXPANSION_TOWERS);
+Object.assign(TRAPS,EXPANSION_TRAPS);
+Object.assign(UNITS,EXPANSION_UNITS);
+Object.assign(RESEARCH,EXPANSION_RESEARCH);
 const path=(corners)=>{
   const out=[];
   for(let i=0;i<corners.length-1;i++){
@@ -173,6 +179,7 @@ const missions=[
     ]
   }
 ];
+missions.push(...buildExpansion(makeMap));
 // Keep the first sector's carefully authored 18 building slots from its design specification.
 missions[0].map.buildCells=[
   [1,3],[2,4],[3,6],[5,6],[6,4],[7,2],[7,5],[8,6],[10,2],
@@ -183,7 +190,7 @@ export const MISSION_IDS=missions.map(m=>m.id);
 export const sectorId=n=>'sector-'+String(n).padStart(2,'0');
 export const preceding=id=>MISSION_IDS.indexOf(id)===0?null:MISSION_IDS[MISSION_IDS.indexOf(id)-1]??null;
 export function validateContent(){
-  if(MISSION_IDS.length!==6)throw Error('Expected exactly six MVP sectors');
+  if(MISSION_IDS.length!==24)throw Error('Expected exactly 24 campaign sectors');
   for(const mission of missions){
     const {width,height,routes,buildCells,trapCells}=mission.map;
     if(mission.stars.length!==3 || mission.briefing.length<3 || !mission.waves.length)throw Error('Incomplete sector '+mission.id);
@@ -198,6 +205,10 @@ export function validateContent(){
       if(!ENEMIES[g.type] || !routes[g.route] || g.count<=0 || g.interval<=0 || g.delay<0)throw Error('Invalid wave '+mission.id);
     }
     for(const t of mission.allowed.towers)if(!TOWERS[t])throw Error('Invalid tower '+t);
+    for(const t of mission.allowed.traps)if(!TRAPS[t])throw Error('Invalid trap '+t);
+    for(const u of mission.allowed.units)if(!UNITS[u])throw Error('Invalid unit '+u);
+    if(mission.objective.type==='relay' && (!mission.map.relaySites || mission.map.relaySites.length!==3))throw Error('Invalid relay sector '+mission.id);
+    if(['remote','escort'].includes(mission.objective.type) && mission.map.researchPath.length<2)throw Error('Missing research path '+mission.id);
   }
   return true;
 }
