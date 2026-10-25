@@ -107,12 +107,23 @@ export class Battlefield {
     if(!this.width||!this.height||!this.ctx||!state)return;
     const c=this.ctx,s=this.scale,map=state.config.map;
     c.setTransform(this.dpr,0,0,this.dpr,0,0);
+    const palettes={
+      'Посадочная долина':['#214845','#1c403f','#183b3e'],
+      'Кремниевые ущелья':['#4a4b50','#39474d','#354447'],
+      'Светящиеся болота':['#244a49','#194944','#23504e'],
+      'Тектонический разлом':['#503e40','#433d4a','#3b4255'],
+      'Кристальное плато':['#3c5372','#31475f','#2b455b'],
+      'Кроны гигантов':['#264d36','#254636','#23403a'],
+      'Обсидиановые дюны':['#48424a','#413b48','#373746'],
+      'Кратер сияния':['#364a65','#313e60','#2b3a59']
+    };
+    const terrainColors=palettes[state.config.biome]||palettes['Посадочная долина'];
     c.fillStyle='#091d2b';c.fillRect(0,0,this.width,this.height);
     for(let row=0;row<map.height;row++)for(let col=0;col<map.width;col++){
       const p=this.toScreen(col,row);
       if(p.x+s<0||p.x>this.width||p.y+s<0||p.y>this.height)continue;
       const n=(col*43+row*27+col*row*11)%13;
-      c.fillStyle=n<4?'#214845':n<8?'#1c403f':'#183b3e';
+      c.fillStyle=n<4?terrainColors[0]:n<8?terrainColors[1]:terrainColors[2];
       c.fillRect(p.x+1,p.y+1,s-2,s-2);
       c.strokeStyle='#79bcb814';c.lineWidth=1;c.strokeRect(p.x+.5,p.y+.5,s,s);
       if(n===3){c.fillStyle='#8fbd9223';c.beginPath();c.arc(p.x+s*.45,p.y+s*.55,s*.11,0,Math.PI*2);c.fill();}
@@ -138,6 +149,17 @@ export class Battlefield {
       if(state.traps.some(t=>t.col===tile.col&&t.row===tile.row))continue;
       const p=this.toScreen(tile.col+.5,tile.row+.5);
       c.strokeStyle='#ffcc7f5e';c.beginPath();c.arc(p.x,p.y,s*.2,0,Math.PI*2);c.stroke();
+    }
+    if(map.relaySites?.length){
+      map.relaySites.forEach((site,i)=>{
+        const p=this.toScreen(site.col+.5,site.row+.5);
+        const active=state.relayIndex===i,done=state.relayIndex>i;
+        c.strokeStyle=done?'#84e4ac':active?'#fff4b4':'#9ac5cc';
+        c.fillStyle=done?'#2b715c':active?'#7c7849':'#2a4a5a';
+        c.lineWidth=2;c.beginPath();c.arc(p.x,p.y,s*.36,0,Math.PI*2);c.fill();c.stroke();
+        c.textAlign='center';c.font='700 '+Math.max(10,s*.24)+'px sans-serif';c.fillStyle='#f7fceb';
+        c.fillText(String(i+1),p.x,p.y+s*.09);
+      });
     }
     if(map.researchPath.length){
       c.strokeStyle='#a1f4a5';c.lineWidth=2;c.setLineDash([s*.2,s*.24]);c.beginPath();
@@ -172,7 +194,7 @@ export class Battlefield {
       if(u.hp<=0)continue;
       const p=this.toScreen(u.x,u.y);c.beginPath();c.arc(p.x,p.y,s*.25,0,2*Math.PI);
       c.fillStyle='#7ef7ec';c.fill();c.strokeStyle='#10303c';c.lineWidth=1.5;c.stroke();
-      c.fillStyle='#0b2935';c.font='700 '+Math.max(12,s*.3)+'px sans-serif';c.fillText('◇',p.x,p.y+s*.10);
+      c.fillStyle='#0b2935';c.font='700 '+Math.max(12,s*.3)+'px sans-serif';c.fillText(UNITS[u.type].icon,p.x,p.y+s*.10);
       this.health(p.x,p.y-s*.36,s*.52,u.hp,u.maxHp,'#8eefe0');
     }
     if(state.team){
@@ -185,6 +207,7 @@ export class Battlefield {
       const p=this.toScreen(e.x,e.y),d=ENEMIES[e.type],r=d.air?s*.24:s*.25;
       c.beginPath();c.ellipse(p.x,p.y,r,r*.8,0,0,2*Math.PI);c.fillStyle=d.color;c.fill();
       c.strokeStyle=d.air?'#dcf9ff':'#4a2732';c.lineWidth=1.5;c.stroke();
+      if(d.boss){c.beginPath();c.arc(p.x,p.y,s*.33,0,Math.PI*2);c.strokeStyle='#fff19a';c.lineWidth=3;c.stroke();}
       if(d.air){c.beginPath();c.moveTo(p.x-s*.34,p.y-s*.08);c.lineTo(p.x+s*.34,p.y-s*.08);c.strokeStyle='#b4eaff';c.stroke();}
       if(e.type==='shell'){c.strokeStyle='#fff4d3';c.beginPath();c.arc(p.x,p.y,r*.65,0,Math.PI*2);c.stroke();}
       this.health(p.x,p.y-s*.38,s*.6,e.hp,e.maxHp,'#ffc2a2');
