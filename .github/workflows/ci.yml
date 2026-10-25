@@ -15,3 +15,5 @@ jobs:
         run: npm run check
       - name: Run tests
         run: npm test
+      - name: Browser smoke test (when Chrome is available)
+        run: npm run smoke
