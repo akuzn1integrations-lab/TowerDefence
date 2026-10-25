@@ -6,7 +6,7 @@ const safeInt=(v)=>Number.isSafeInteger(v)&&v>=0?Math.min(v,100000000):0;
 const record=()=>({briefingSeen:false,firstVictoryClaimed:false,bestStars:0,victories:0,attempts:0});
 export function newProgress(){
   return {
-    schemaVersion:2,campaignId:'nova7-mvp',
+    schemaVersion:3,campaignId:'nova7-complete',
     sectors:Object.fromEntries(MISSION_IDS.map(id=>[id,record()])),
     unlockedSectorIds:['sector-01'],
     resources:{materials:0,data:0},
@@ -15,7 +15,7 @@ export function newProgress(){
 }
 export function sanitizeProgress(input){
   const p=newProgress();
-  if(!input||typeof input!=='object'||![1,2].includes(input.schemaVersion))return p;
+  if(!input||typeof input!=='object'||![1,2,3].includes(input.schemaVersion))return p;
   for(const id of MISSION_IDS){
     const old=input.sectors?.[id]||{};
     const wins=safeInt(old.victories);
@@ -43,10 +43,10 @@ export function loadProgress(storage){
     const raw=(storage??globalThis.localStorage).getItem(SAVE_KEY);
     if(!raw)return {progress:newProgress(),warning:''};
     const parsed=JSON.parse(raw);
-    if(!parsed||![1,2].includes(parsed.schemaVersion))
+    if(!parsed||![1,2,3].includes(parsed.schemaVersion))
       return {progress:newProgress(),warning:'Неподдерживаемая версия сохранения. Начата новая экспедиция.'};
-    const migrated=parsed.schemaVersion===1;
-    return {progress:sanitizeProgress(parsed),warning:migrated?'Сохранение первой версии перенесено в MVP.':''};
+    const migrated=parsed.schemaVersion!==3;
+    return {progress:sanitizeProgress(parsed),warning:migrated?'Сохранение предыдущей кампании перенесено в версию с 24 секторами.':''};
   }catch{
     return {progress:newProgress(),warning:'Повреждённое или недоступное сохранение. Прогресс этой сессии может не сохраняться.'};
   }
@@ -92,8 +92,9 @@ export function campaignComplete(p){return MISSION_IDS.every(id=>p.sectors[id].v
 export function unlockedEquipment(p){
   const count=MISSION_IDS.filter(id=>p.sectors[id].victories>0).length;
   return {
-    towers:['kinetic',...(count>=1?['pulse']:[]),...(count>=3?['mortar']:[]),...(count>=4?['antiAir']:[])],
-    traps:count>=2?['mine','slow']:[],
-    units:count>=2?['drone']:[]
+    towers:['kinetic',...(count>=1?['pulse']:[]),...(count>=3?['mortar']:[]),...(count>=4?['antiAir']:[]),
+      ...(count>=6?['cryo']:[]),...(count>=12?['sonic']:[])],
+    traps:count>=2?['mine','slow',...(count>=15?['lure']:[])]:[],
+    units:count>=2?['drone',...(count>=9?['infantry']:[]),...(count>=18?['repair']:[])]:[]
   };
 }
