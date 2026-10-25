@@ -55,11 +55,11 @@ function show(name){
 function camp(){
   $text('campMaterials',progress.resources.materials);
   $text('campData',progress.resources.data);
-  $text('campStars',maxStars()+' / 18');
+  $text('campStars',maxStars()+' / '+(MISSION_IDS.length*3));
   const count=MISSION_IDS.filter(id=>record(id).victories>0).length;
   $text('campNarrative',campaignComplete(progress)?
-    'Все шесть районов первой главы исследованы. Оборонные узлы развёрнуты, а учёные возвращаются с новыми открытиями.':
-    count?'Исследовано секторов: '+count+' / 6. Инженеры внедряют новые устройства после каждой успешной экспедиции.':
+    'Все 24 сектора Нова-7 изучены. Периметр колонии защищён, а сеть направляет миграцию животных в безопасный коридор.':
+    count?'Исследовано секторов: '+count+' / '+MISSION_IDS.length+'. Инженеры внедряют новые устройства после каждой успешной экспедиции.':
     'Учёные готовят первый энергетический купол. Им требуется защита.');
   const root=$('researchList');root.replaceChildren();
   for(const [id,r] of Object.entries(RESEARCH)){
@@ -79,7 +79,7 @@ function camp(){
     if(!availability.ok&&!progress.research[id])body.append(element('small','blocked-research',availability.reason));
     article.append(icon,body);root.append(article);
   }
-  $text('researchHint','Технологии открываются по мере прохождения секторов. ПВО перед сектором 05 разблокируется автоматически.');
+  $text('researchHint','Новые устройства открываются бесплатно перед первой сюжетной миссией, где нужны. Исследования усиливают их дополнительно.');
   show('camp');
 }
 function archive(){
@@ -132,21 +132,30 @@ function settings(){
 }
 function map(){
   const root=$('sectorNodes');root.replaceChildren();
+  let chapter='';
+  let chapterGrid=null;
   for(const id of MISSION_IDS){
     const def=MISSIONS[id],rec=record(id),unlocked=isUnlocked(id);
+    if(chapter!==def.biome){
+      chapter=def.biome;
+      const wrapper=element('section','chapter-block');
+      wrapper.append(element('h3','chapter-name',def.biome+' · '+String(Math.floor((def.number-1)/3)+1).padStart(2,'0')));
+      chapterGrid=element('div','chapter-sector-grid');
+      wrapper.append(chapterGrid);root.append(wrapper);
+    }
     const button=element('button','sector-chip '+(unlocked?'available':'locked')+(id===selectedMission?' selected':''));
     button.type='button';button.disabled=false;button.setAttribute('aria-pressed',String(id===selectedMission));
     button.append(element('span','sector-index',String(def.number).padStart(2,'0')),
       element('strong','',unlocked?def.name:'Неизведано'),
       element('small','',unlocked?'★'.repeat(rec.bestStars)+'☆'.repeat(3-rec.bestStars):'🔒 Сектор закрыт'));
     button.addEventListener('click',()=>{selectedMission=id;map();});
-    root.append(button);
+    chapterGrid.append(button);
   }
   const def=activeSector(),rec=record(selectedMission),available=isUnlocked(selectedMission);
   $text('mapBiome',def.biome.toUpperCase()+' // СЕКТОР '+String(def.number).padStart(2,'0'));
   $text('mapTitle',def.name);$text('mapStars','★'.repeat(rec.bestStars)+'☆'.repeat(3-rec.bestStars));
   $text('mapSummary',def.summary);
-  const objectives={defend:'Защитить прибор и завершить монтаж',hold:'Удержать пункт наблюдения до завершения исследования',remote:'Доставить научную группу и защитить монтаж',escort:'Сопроводить группу до эвакуации'};
+  const objectives={defend:'Защитить прибор и завершить монтаж',hold:'Удержать пункт наблюдения до завершения исследования',remote:'Доставить научную группу и защитить монтаж',escort:'Сопроводить группу до эвакуации',relay:'Поочерёдно активировать три ретранслятора'};
   $text('mapObjective',objectives[def.objective.type]);
   const threats=[...new Set(def.waves.flatMap(w=>w.groups.map(g=>ENEMIES[g.type].name)))];
   $text('mapThreat',threats.join(' · ')+' · '+def.waves.length+' волн');
@@ -223,7 +232,7 @@ function pickOnMap(col,row,pos){
   if(!mission||!['preparation','combat','intermission'].includes(mission.phase))return;
   if(moveCommand&&selectedId!==null){
     const result=commandDrone(mission,selectedId,pos.x,pos.y);
-    if(!result.ok)toast(result.reason);else toast('Дрон направлен к новой позиции.');
+    if(!result.ok)toast(result.reason);else toast('Отряд направлен к новой позиции.');
     moveCommand=false;selection();return;
   }
   const item=inspectAt(mission,col,row);
@@ -250,9 +259,9 @@ function selection(){
       upgradeButton.textContent=t.level===3?'Максимальный уровень':'Улучшить · '+price+' ЭС';
       sellButton.hidden=false;sellButton.textContent='Продать · +'+refund+' ЭС';
     } else if(u){
-      info.textContent=moveCommand?'Теперь выберите точку назначения дрона на карте.':
-        'Разведдрон: HP '+Math.ceil(u.hp)+' / '+u.maxHp+'. Атакует наземных врагов.';
-      commandButton.hidden=false;commandButton.textContent=moveCommand?'Отменить перемещение':'Переместить дрон';
+      info.textContent=moveCommand?'Выберите новое место расположения отряда на карте.':
+        UNITS[u.type].name+': HP '+Math.ceil(u.hp)+' / '+u.maxHp+'. '+(u.type==='repair'?'Чинит критические объекты и союзников.':'Атакует наземные цели.');
+      commandButton.hidden=false;commandButton.textContent=moveCommand?'Отменить перемещение':'Переместить отряд';
     }else info.textContent='Нажмите на установленную башню или дрон, чтобы открыть команды.';
     return;
   }
@@ -293,7 +302,7 @@ function hud(){
   const primaryMax=mission.team?mission.team.maxHp:def.objective.maxHp;
   $text('hudTargetLabel',mission.team?'Группа · прибор '+Math.ceil(mission.targetHp)+' HP':'Критический прибор');
   $text('hudHp',Math.ceil(primary)+' / '+primaryMax);$('hpBar').style.width=(primary/primaryMax*100)+'%';
-  const stage=def.objective.type==='escort'?'Путь к эвакуации':
+  const stage=def.objective.type==='relay'?'Ретранслятор '+Math.min(3,mission.relayIndex+1)+' / 3':def.objective.type==='escort'?'Путь к эвакуации':
     def.objective.type==='remote'&&mission.team&&!mission.team.atDestination?'Доставка оборудования':
     def.objective.type==='hold'?'Безопасное сканирование':'Монтаж / исследование';
   $text('hudScienceLabel',stage);
@@ -323,12 +332,12 @@ function finishMission(){
   if(success)save();
   audio.cue(success?'victory':'defeat');
   $text('resultsSector','ОТЧЁТ // СЕКТОР '+String(def.number).padStart(2,'0'));
-  $text('resultsBadge',success?(campaignComplete(progress)?'ПЕРВАЯ ГЛАВА ЗАВЕРШЕНА':'МИССИЯ ВЫПОЛНЕНА'):'ЭКСПЕДИЦИЯ ОТСТУПИЛА');
-  $text('resultsTitle',success?(campaignComplete(progress)?'Карта исследована':def.name+' — успех'):'Задание провалено');
+  $text('resultsBadge',success?(campaignComplete(progress)?'ПЛАНЕТА ИССЛЕДОВАНА':'МИССИЯ ВЫПОЛНЕНА'):'ЭКСПЕДИЦИЯ ОТСТУПИЛА');
+  $text('resultsTitle',success?(campaignComplete(progress)?'Нова-7: мир с соседями':def.name+' — успех'):'Задание провалено');
   $text('resultsStars',success?'★'.repeat(mission.stars)+'☆'.repeat(3-mission.stars):'☆☆☆');
   $text('resultDescription',success?
     'Лучший результат: '+record(selectedMission).bestStars+'/3 звёзд. '+(campaignComplete(progress)?
-    'Все шесть секторов первой главы доступны для повторного прохождения.':'Следующий сектор открыт на карте.'):
+    'Все 24 сектора планеты открыты для повторного прохождения. Экспедиция завершила исследования и защитила колонию.':'Следующий сектор открыт на карте.'):
     mission.outcomeReason+'. Попробуйте изменить построение обороны.');
   const root=$('resultStats');root.replaceChildren();
   const stats=[['Прибор',Math.ceil(mission.targetHp)+' / '+def.objective.maxHp],
