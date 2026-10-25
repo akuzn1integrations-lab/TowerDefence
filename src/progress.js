@@ -38,9 +38,10 @@ export function sanitizeProgress(candidate) {
   safe.settings.reducedMotion = candidate.settings?.reducedMotion === true;
   return safe;
 }
-export function loadProgress(storage = globalThis.localStorage) {
+export function loadProgress(storage) {
   try {
-    const raw = storage.getItem(SAVE_KEY);
+    const source = storage ?? globalThis.localStorage;
+    const raw = source.getItem(SAVE_KEY);
     if (!raw) return { progress: newProgress(), warning: '' };
     const parsed = JSON.parse(raw);
     if (!parsed || parsed.schemaVersion !== 1) {
@@ -51,9 +52,10 @@ export function loadProgress(storage = globalThis.localStorage) {
     return { progress: newProgress(), warning: 'Не удалось прочитать сохранение. Прогресс этой сессии может не сохраняться.' };
   }
 }
-export function storeProgress(progress, storage = globalThis.localStorage) {
+export function storeProgress(progress, storage) {
   try {
-    storage.setItem(SAVE_KEY, JSON.stringify(sanitizeProgress(progress)));
+    const source = storage ?? globalThis.localStorage;
+    source.setItem(SAVE_KEY, JSON.stringify(sanitizeProgress(progress)));
     return true;
   } catch (_) { return false; }
 }
