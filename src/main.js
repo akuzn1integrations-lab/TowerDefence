@@ -153,13 +153,13 @@ function map(){
   }
   const def=activeSector(),rec=record(selectedMission),available=isUnlocked(selectedMission);
   $text('mapBiome',def.biome.toUpperCase()+' // СЕКТОР '+String(def.number).padStart(2,'0'));
-  $text('mapTitle',def.name);$text('mapStars','★'.repeat(rec.bestStars)+'☆'.repeat(3-rec.bestStars));
-  $text('mapSummary',def.summary);
+  $text('mapTitle',available?def.name:'Неизведанная территория');$text('mapStars','★'.repeat(rec.bestStars)+'☆'.repeat(3-rec.bestStars));
+  $text('mapSummary',available?def.summary:'Этот район ещё не исследован. Завершите предыдущую миссию, чтобы получить разведданные.');
   const objectives={defend:'Защитить прибор и завершить монтаж',hold:'Удержать пункт наблюдения до завершения исследования',remote:'Доставить научную группу и защитить монтаж',escort:'Сопроводить группу до эвакуации',relay:'Поочерёдно активировать три ретранслятора'};
-  $text('mapObjective',objectives[def.objective.type]);
+  $text('mapObjective',available?objectives[def.objective.type]:'Данные недоступны');
   const threats=[...new Set(def.waves.flatMap(w=>w.groups.map(g=>ENEMIES[g.type].name)))];
-  $text('mapThreat',threats.join(' · ')+' · '+def.waves.length+' волн');
-  $text('mapConditions',def.stars.join(' / '));$text('mapRewards',formatRewards(def.rewards));
+  $text('mapThreat',available?threats.join(' · ')+' · '+def.waves.length+' волн':'Неизвестно');
+  $text('mapConditions',available?def.stars.join(' / '):'Условия станут известны после разведки');$text('mapRewards',available?formatRewards(def.rewards):'Неизвестно');
   $('mapPlay').disabled=!available;
   $('mapBrief').disabled=!available;
   $text('mapPlay',available?(rec.victories?'Повторить миссию':'Начать миссию'):'Сектор ещё закрыт');
