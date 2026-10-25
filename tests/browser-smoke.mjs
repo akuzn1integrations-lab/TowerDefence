@@ -67,6 +67,12 @@ try{
   await check("document.querySelector('#screen-mission').classList.contains('active')",'battle');
   await check("document.querySelector('#field').width>0",'canvas');
   await check("document.querySelectorAll('#equipmentList button').length>=2",'equipment');
+  const point=await run("(()=>{const r=document.querySelector('#field').getBoundingClientRect();const s=Math.max(20,Math.min(70,Math.min(r.width/20,r.height/12)));return {x:r.left+r.width/2+(2.5-10)*s,y:r.top+r.height/2+(4.5-6)*s};})()");
+  await call('Input.dispatchMouseEvent',{type:'mousePressed',x:point.x,y:point.y,button:'left',clickCount:1});
+  await call('Input.dispatchMouseEvent',{type:'mouseReleased',x:point.x,y:point.y,button:'left',clickCount:1});
+  await check("document.querySelector('#confirmBuild').disabled===false",'building preview');
+  await run("document.querySelector('#confirmBuild').click()");
+  await check("document.querySelector('#hudSupply').textContent.includes('300')",'construction deducted supply');
   await run("document.querySelector('#startWave').click()");
   await check("document.querySelector('#hudWave').textContent.includes('1 / 3')",'wave');
   await run("document.querySelector('#pauseButton').click()");
@@ -80,12 +86,14 @@ try{
   await check("document.querySelector('#screen-settings').classList.contains('active')",'settings');
   await run("(()=>{const x=document.querySelector('#sfxVolume');x.value='25';x.dispatchEvent(new Event('input',{bubbles:true}));return true})()");
   await check("JSON.parse(localStorage.getItem('towerdefence-nova7-v1')).settings.sfxVolume===.25",'save settings');
-  await call('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:2,mobile:true});
-  await sleep(250);
-  await check("document.documentElement.scrollWidth<=window.innerWidth+1",'mobile horizontal overflow');
+  for(const [width,height] of [[360,800],[390,844],[800,360],[768,1024],[523,523],[1920,1080]]){
+    await call('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:2,mobile:width<1000});
+    await sleep(100);
+    await check("document.documentElement.scrollWidth<=window.innerWidth+1",'horizontal overflow '+width+'x'+height);
+  }
   await run("document.querySelector('#settingsBack').click()");
   await check("document.querySelector('#screen-archive').classList.contains('active')",'back from settings');
-  console.log('PASS: actual Chromium — home, camp, map, briefing, battle, pause, archive, settings, localStorage, mobile');
+  console.log('PASS: Chromium — desktop/mobile, construction, menu, camp, map, briefing, battle, pause, archive, settings, save');
 }finally{
   try{ws?.close();}catch{}
   try{browser?.kill('SIGKILL');}catch{}
