@@ -189,3 +189,50 @@ test('UI содержит все точки динамического упра�
   assert.ok(ids.has('equipmentList'));
   assert.ok(ids.has('objectives'));
 });
+
+
+test('вся глава 01–06 проходима подряд без обязательного повторного фарма',()=>{
+  const p=newProgress();
+  const strategies={
+    'sector-01':{initial:['kinetic','kinetic','kinetic','kinetic'],between:['kinetic']},
+    'sector-02':{initial:['pulse','pulse','kinetic','kinetic'],between:['pulse']},
+    'sector-03':{initial:['pulse','pulse','kinetic','drone'],between:['pulse']},
+    'sector-04':{initial:['mortar','pulse','pulse','kinetic','kinetic'],between:['mortar']},
+    'sector-05':{initial:['antiAir:exit','antiAir','antiAir','pulse:exit','kinetic:exit'],between:['antiAir:exit','pulse:exit']},
+    'sector-06':{initial:['antiAir','antiAir:exit','pulse','kinetic','drone:team'],between:['pulse:team','mortar','antiAir:exit']}
+  };
+  for(const id of MISSION_IDS){
+    assert.ok(p.unlockedSectorIds.includes(id),'Сектор должен быть доступен: '+id);
+    const m=createMission(id),plan=strategies[id];
+    function place(option){
+      const [type,focus='spread']=option.split(':');
+      const spec=TOWERS[type]||UNITS[type],routes=m.config.map.routes;
+      const road=type==='antiAir'?(routes.air||routes.west):routes.west;
+      const choices=m.config.map.buildCells.filter(t=>canBuild(m,type,t.col,t.row).ok);
+      if(!choices.length)return false;
+      let choice=null,max=-Infinity;
+      for(const c of choices){
+        const coverage=road.reduce((sum,t)=>sum+(Math.hypot(c.col-t.col,c.row-t.row)<=(spec.range||3)+.4?1:0),0);
+        const neighbors=m.towers.filter(t=>t.type===type).reduce((sum,t)=>sum+Math.max(0,5-Math.hypot(c.col-t.col,c.row-t.row)),0);
+        const exit=road.at(-1),exitDist=Math.hypot(c.col-exit.col,c.row-exit.row);
+        const teamDist=m.team?Math.hypot(c.col-m.team.position.x,c.row-m.team.position.y):0;
+        const score=coverage*2-neighbors*8+(focus==='exit'?-exitDist*3:focus==='team'?-teamDist*3:0);
+        if(score>max){max=score;choice=c;}
+      }
+      return build(m,type,choice.col,choice.row).ok;
+    }
+    for(const item of plan.initial)assert.equal(place(item),true,id+': невозможно построить '+item);
+    let steps=0;
+    for(let wave=0;wave<m.config.waves.length;wave++){
+      assert.equal(startWave(m).ok,true);
+      while(m.phase==='combat'&&steps<19000){updateMission(m,1/60);steps++;}
+      assert.notEqual(m.phase,'defeat',id+' волна '+(wave+1)+': '+m.outcomeReason);
+      if(m.phase==='intermission')for(const item of plan.between)place(item);
+    }
+    assert.equal(m.phase,'victory',id+' должен закончиться победой, а не '+m.phase);
+    assert.ok(m.stars>=1);
+    grantVictory(p,id,m.stars);
+  }
+  assert.equal(campaignComplete(p),true);
+  assert.equal(p.sectors['sector-06'].victories,1);
+});
