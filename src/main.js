@@ -1,333 +1,350 @@
-import { BRIEFING, GENERATOR, WAVES, TURRET, RESEARCH } from './config.js';
+import { MISSIONS, MISSION_IDS, ENEMIES, TOWERS, TRAPS, UNITS, RESEARCH, sectorId } from './config.js';
 import {
-  createMission, missionProgress, towerAt, validateBuild, placeTower,
-  upgradeTower, sellTower, startWave, updateMission, towerRange
+  createMission, canBuild, build, upgrade, sell, startWave, commandDrone, inspectAt,
+  towerRange, updateMission, objectiveProgress, buildCost
 } from './model.js';
 import {
-  loadProgress, storeProgress, markBriefingSeen, markAttempt,
-  grantVictory, purchaseResearch, newProgress, SAVE_KEY
+  loadProgress, storeProgress, newProgress, markAttempt, markBriefingSeen,
+  grantVictory, purchaseResearch, researchAvailable, campaignComplete
 } from './progress.js';
 import { Battlefield } from './visual.js';
 
 const $=id=>document.getElementById(id);
-const allScreens=[...document.querySelectorAll('.screen')];
-const loaded=loadProgress();
-let progress=loaded.progress, currentScreen='home', mission=null, battlefield=null;
-let mode='build', selectedCell=null, selectedTowerId=null;
-let briefingIndex=0, briefingAfterPlay=false, briefingReturn='map';
-let paused=false, speed=1, lastFrame=0, accumulator=0, resolved=false, attemptCounted=false;
-let toastTimer=0, lastHudAt=0;
-const STEP=1/60, MAX_STEPS=8;
-const touchHint='Тапните по подсвеченной площадке, затем нажмите «Построить».';
-
-function displayScreen(name) {
-  currentScreen=name;
-  for(const element of allScreens) element.classList.toggle('active',element.id==='screen-'+name);
-  window.scrollTo(0,0);
-  if(name==='mission') {
-    if(!battlefield) battlefield=new Battlefield($('field'),onCellPick);
-    battlefield.resize();
-    updateHud();
+const screens=[...document.querySelectorAll('.screen')];
+let {progress,warning:loadWarning}=loadProgress();
+let screen='home', selectedMission='sector-01', mission=null, field=null;
+let briefIndex=0,briefReturn='map',briefToPlay=false;
+let selectedType='kinetic',selectedCell=null,selectedId=null,mode='build',moveCommand=false;
+let paused=false,speed=1,resolved=false,attemptCounted=false,accumulator=0,lastFrame=0,lastHud=0;
+const STEP=1/60,MAX_STEPS=8;
+let toastTimeout;
+const activeSector=()=>MISSIONS[selectedMission];
+const record=id=>progress.sectors[id];
+const maxStars=()=>MISSION_IDS.reduce((sum,id)=>sum+record(id).bestStars,0);
+const isUnlocked=id=>progress.unlockedSectorIds.includes(id);
+const formatRewards=r=>(r.materials+r.firstMaterials)+' материалов · '+(r.data+r.firstData)+' данных';
+const $text=(id,value)=>{$(id).textContent=String(value);};
+const element=(tag,cls='',text='')=>{
+  const x=document.createElement(tag);
+  if(cls)x.className=cls;
+  if(text!==undefined)x.textContent=text;
+  return x;
+};
+function toast(value){
+  const x=$('toast');x.textContent=value;x.hidden=false;
+  clearTimeout(toastTimeout);toastTimeout=setTimeout(()=>{x.hidden=true;},3800);
+}
+function save(){
+  if(storeProgress(progress))$text('saveIndicator','Прогресс сохранён');
+  else{$text('saveIndicator','Ошибка сохранения');toast('Данные браузера недоступны. Прогресс может быть потерян после закрытия страницы.');}
+}
+function show(name){
+  screen=name;
+  screens.forEach(el=>el.classList.toggle('active',el.id==='screen-'+name));
+  window.scrollTo(0,0);lastFrame=0;accumulator=0;
+  if(name==='mission'&&mission){
+    if(!field)field=new Battlefield($('field'),pickOnMap);
+    field.resize();
+    hud();
   }
-  lastFrame=0;accumulator=0;
 }
-function save() {
-  if(!storeProgress(progress)) {
-    $('saveIndicator').textContent='Не удалось сохранить';
-    notify('Хранилище браузера недоступно. После закрытия страницы прогресс может пропасть.');
-    return;
+function camp(){
+  $text('campMaterials',progress.resources.materials);
+  $text('campData',progress.resources.data);
+  $text('campStars',maxStars()+' / 18');
+  const count=MISSION_IDS.filter(id=>record(id).victories>0).length;
+  $text('campNarrative',campaignComplete(progress)?
+    'Все шесть районов первой главы исследованы. Оборонные узлы развёрнуты, а учёные возвращаются с новыми открытиями.':
+    count?'Исследовано секторов: '+count+' / 6. Инженеры внедряют новые устройства после каждой успешной экспедиции.':
+    'Учёные готовят первый энергетический купол. Им требуется защита.');
+  const root=$('researchList');root.replaceChildren();
+  for(const [id,r] of Object.entries(RESEARCH)){
+    const article=element('div','research-info');
+    const icon=element('div','tech-icon','⌁');
+    const body=element('div','tech-content');
+    body.append(element('strong','',r.name),element('p','',r.desc),
+      element('small','',r.materials+' материалов · '+r.data+' данных'));
+    const button=element('button','btn outline block',progress.research[id]?'✓ Изучено':'Исследовать');
+    button.type='button';const availability=researchAvailable(progress,id);button.disabled=!availability.ok;
+    button.addEventListener('click',()=>{
+      const result=purchaseResearch(progress,id);
+      if(result.ok){save();toast('Технология «'+r.name+'» изучена.');camp();}
+      else toast(result.reason);
+    });
+    body.append(button);
+    if(!availability.ok&&!progress.research[id])body.append(element('small','blocked-research',availability.reason));
+    article.append(icon,body);root.append(article);
   }
-  $('saveIndicator').textContent='Прогресс сохранён';
+  $text('researchHint','Технологии открываются по мере прохождения секторов. ПВО перед сектором 05 разблокируется автоматически.');
+  show('camp');
 }
-function notify(text) {
-  const element=$('toast');
-  element.textContent=text;element.hidden=false;
-  window.clearTimeout(toastTimer);
-  toastTimer=window.setTimeout(()=>{element.hidden=true;},3600);
+function map(){
+  const root=$('sectorNodes');root.replaceChildren();
+  for(const id of MISSION_IDS){
+    const def=MISSIONS[id],rec=record(id),unlocked=isUnlocked(id);
+    const button=element('button','sector-chip '+(unlocked?'available':'locked')+(id===selectedMission?' selected':''));
+    button.type='button';button.disabled=false;button.setAttribute('aria-pressed',String(id===selectedMission));
+    button.append(element('span','sector-index',String(def.number).padStart(2,'0')),
+      element('strong','',unlocked?def.name:'Неизведано'),
+      element('small','',unlocked?'★'.repeat(rec.bestStars)+'☆'.repeat(3-rec.bestStars):'🔒 Сектор закрыт'));
+    button.addEventListener('click',()=>{selectedMission=id;map();});
+    root.append(button);
+  }
+  const def=activeSector(),rec=record(selectedMission),available=isUnlocked(selectedMission);
+  $text('mapBiome',def.biome.toUpperCase()+' // СЕКТОР '+String(def.number).padStart(2,'0'));
+  $text('mapTitle',def.name);$text('mapStars','★'.repeat(rec.bestStars)+'☆'.repeat(3-rec.bestStars));
+  $text('mapSummary',def.summary);
+  const objectives={defend:'Защитить прибор и завершить монтаж',hold:'Удержать пункт наблюдения до завершения исследования',remote:'Доставить научную группу и защитить монтаж',escort:'Сопроводить группу до эвакуации'};
+  $text('mapObjective',objectives[def.objective.type]);
+  const threats=[...new Set(def.waves.flatMap(w=>w.groups.map(g=>ENEMIES[g.type].name)))];
+  $text('mapThreat',threats.join(' · ')+' · '+def.waves.length+' волн');
+  $text('mapConditions',def.stars.join(' / '));$text('mapRewards',formatRewards(def.rewards));
+  $('mapPlay').disabled=!available;
+  $('mapBrief').disabled=!available;
+  $text('mapPlay',available?(rec.victories?'Повторить миссию':'Начать миссию'):'Сектор ещё закрыт');
+  $text('mapNotice',available?(rec.victories?'Сектор пройден, допускаются неограниченные повторы.':'Сектор доступен для первой вылазки.'):'Завершите предыдущий сектор, чтобы открыть эту область.');
+  show('map');
 }
-function updateCamp(){
-  $('campMaterials').textContent=progress.resources.materials;
-  $('campData').textContent=progress.resources.data;
-  $('campStars').textContent=progress.sectors['sector-01'].bestStars+' / 3';
-  const hasWon=progress.sectors['sector-01'].victories>0;
-  $('campNarrative').textContent=hasWon?
-    'Первый защитный купол установлен. Учёные получили новые образцы и ожидают экспедицию в соседние сектора.':
-    'Учёные готовят первый энергетический купол. Им требуется защита.';
-  const researched=progress.research.precision===true;
-  $('researchButton').disabled=researched || !hasWon ||
-    progress.resources.materials<RESEARCH.precision.materials;
-  $('researchButton').textContent=researched?'✓ Технология изучена':'Изучить — 250 материалов';
-  $('researchHint').textContent=researched?'Бонус +10% к урону действует во всех будущих вылазках.':
-    !hasWon?'Открывается после первой успешной миссии.':
-    progress.resources.materials<250?'Недостаточно материалов. Повторите миссию.':
-    'Исследование доступно. Подтвердите покупку.';
+function briefing({toPlay=false,returnTo='map'}={}){
+  briefToPlay=toPlay;briefReturn=returnTo;briefIndex=0;drawBrief();show('briefing');
 }
-function updateMap(){
-  const record=progress.sectors['sector-01'];
-  $('mapStars').textContent='★'.repeat(record.bestStars)+'☆'.repeat(3-record.bestStars);
-  $('sector01').title=record.victories>0?'Сектор пройден, можно повторить':'Сектор доступен';
-  $('sector02').title=record.victories>0?'Маршрут обнаружен. Сектор появится в MVP.':'Откроется после сектора 01 (будущая версия)';
-  $('sector02').querySelector('small').textContent=record.victories>0?'Обнаружен · скоро':'Неизведано';
-}
-function goCamp(){updateCamp();displayScreen('camp');}
-function goMap(){updateMap();displayScreen('map');}
-function showBriefing({afterPlay=false,returnTo='map'}={}){
-  briefingAfterPlay=afterPlay;briefingReturn=returnTo;briefingIndex=0;
-  renderBriefing();displayScreen('briefing');
-}
-function renderBriefing(){
-  const frame=BRIEFING[briefingIndex];
-  $('briefTitle').textContent=frame[0];
-  $('briefText').textContent=frame[1];
-  $('briefStep').textContent='КАДР '+(briefingIndex+1)+' / '+BRIEFING.length;
-  $('briefPrevious').disabled=briefingIndex===0;
-  $('briefNext').textContent=briefingIndex===BRIEFING.length-1?
-    briefingAfterPlay?'К миссии →':'Готово ✓':'Далее →';
+function drawBrief(){
+  const def=activeSector(),frame=def.briefing[briefIndex];
+  $text('briefSector','ПОЛЁТНОЕ ЗАДАНИЕ · СЕКТОР '+String(def.number).padStart(2,'0'));
+  $text('briefStep','КАДР '+(briefIndex+1)+' / '+def.briefing.length);
+  $text('briefTitle',frame[0]);$text('briefText',frame[1]);
+  $('briefPrevious').disabled=briefIndex===0;
+  $text('briefNext',briefIndex===def.briefing.length-1?(briefToPlay?'К миссии →':'Завершить ✓'):'Далее →');
   const dots=$('briefDots');dots.replaceChildren();
-  BRIEFING.forEach((_,i)=>{
-    const dot=document.createElement('span');
-    if(i===briefingIndex)dot.classList.add('active');
-    dots.append(dot);
-  });
+  def.briefing.forEach((_,i)=>dots.append(element('span',i===briefIndex?'active':'')));
 }
-function finishBriefing(){
-  markBriefingSeen(progress);save();
-  if(briefingAfterPlay) launchMission();
-  else if(briefingReturn==='mission' && mission) displayScreen('mission');
-  else if(briefingReturn==='camp') goCamp();
-  else goMap();
+function briefingDone(){
+  markBriefingSeen(progress,selectedMission);save();
+  if(briefToPlay)launch(selectedMission);
+  else if(briefReturn==='mission'&&mission)show('mission');
+  else map();
 }
-function leaveBriefingWithoutFinishing(){
-  if(briefingReturn==='mission' && mission) displayScreen('mission');
-  else goMap(); // При первом входе автопросмотр повторится позднее.
+function briefingClosed(){if(briefReturn==='mission'&&mission)show('mission');else map();}
+function play(){
+  if(!isUnlocked(selectedMission))return toast('Этот сектор ещё закрыт');
+  if(!record(selectedMission).briefingSeen)briefing({toPlay:true});
+  else launch(selectedMission);
 }
-function playFromMap(){
-  if(!progress.sectors['sector-01'].briefingSeen) showBriefing({afterPlay:true,returnTo:'map'});
-  else launchMission();
+function launch(id){
+  selectedMission=id;mission=createMission(id,progress.research);
+  resolved=false;attemptCounted=false;paused=false;speed=1;lastFrame=0;lastHud=0;accumulator=0;
+  mode='build';moveCommand=false;selectedCell=null;selectedId=null;
+  selectedType=mission.config.allowed.towers[0];
+  const def=activeSector();
+  $text('missionSector','СЕКТОР '+String(def.number).padStart(2,'0')+' · '+def.biome.toUpperCase());
+  $text('missionTitle',def.name);
+  $text('fieldLocation','N7 / '+String(def.number).padStart(2,'0')+' — ТАКТИЧЕСКАЯ КАРТА');
+  const objectives=$('objectives');objectives.replaceChildren();
+  def.stars.forEach(s=>objectives.append(element('span','', '★ '+s)));
+  if(!field)field=new Battlefield($('field'),pickOnMap);
+  show('mission');field.setMission(mission);
+  $text('fieldTip','Подготовьте оборону. Выберите устройство, затем подтвердите размещение.');
+  renderEquipment();selection();hud();
 }
-function launchMission(){
-  mission=createMission({damageBonus:progress.research.precision?0.1:0});
-  paused=false;speed=1;accumulator=0;lastFrame=0;lastHudAt=0;
-  mode='build';selectedCell=null;selectedTowerId=null;resolved=false;attemptCounted=false;
-  $('buildMode').classList.add('active');$('inspectMode').classList.remove('active');
-  $('fieldTip').textContent=touchHint;
-  displayScreen('mission');
-  updateSelection();
-  updateHud();
-}
-function onCellPick(col,row){
-  if(!mission || !['preparation','combat','intermission'].includes(mission.phase)) return;
-  const tower=towerAt(mission,col,row);
-  if(tower) {
-    mode='inspect';selectedTowerId=tower.id;selectedCell=null;
-  } else if(mode==='build') {
-    selectedCell={col,row};selectedTowerId=null;
-  } else {
-    selectedTowerId=null;selectedCell=null;
+function renderEquipment(){
+  const root=$('equipmentList');root.replaceChildren();
+  const def=mission.config.allowed;
+  const modes=[...def.towers,...def.traps,...def.units];
+  for(const type of modes){
+    const data=TOWERS[type]||TRAPS[type]||UNITS[type];
+    const button=element('button','build-option'+(selectedType===type&&mode==='build'?' active':''));
+    button.type='button';button.append(element('span','build-icon',data.icon));
+    const label=element('span','build-name');label.append(element('strong','',data.short||data.name),element('small','',buildCost(type)+' ЭС · '+(TOWERS[type]?'Башня':TRAPS[type]?'Ловушка':'Подвижный отряд')));
+    button.append(label);
+    button.addEventListener('click',()=>{mode='build';moveCommand=false;selectedType=type;selectedId=null;selectedCell=null;renderEquipment();selection();});
+    root.append(button);
   }
-  syncModeButtons();updateSelection();
+  const inspect=element('button','build-option'+(mode==='inspect'?' active':''));
+  inspect.type='button';inspect.append(element('span','build-icon','◎'));
+  const inner=element('span');inner.append(element('strong','','Осмотр / команды'),element('small','','Улучшение и перемещение'));
+  inspect.append(inner);
+  inspect.addEventListener('click',()=>{mode='inspect';selectedCell=null;selectedId=null;moveCommand=false;renderEquipment();selection();});
+  root.append(inspect);
 }
-function syncModeButtons(){
-  $('buildMode').classList.toggle('active',mode==='build');
-  $('inspectMode').classList.toggle('active',mode==='inspect');
+function pickOnMap(col,row,pos){
+  if(!mission||!['preparation','combat','intermission'].includes(mission.phase))return;
+  if(moveCommand&&selectedId!==null){
+    const result=commandDrone(mission,selectedId,pos.x,pos.y);
+    if(!result.ok)toast(result.reason);else toast('Дрон направлен к новой позиции.');
+    moveCommand=false;selection();return;
+  }
+  const item=inspectAt(mission,col,row);
+  if(item){
+    selectedId=item.id;selectedCell=null;mode='inspect';
+    renderEquipment();selection();return;
+  }
+  if(mode==='build'){selectedCell={col,row};selectedId=null;}
+  else{selectedId=null;selectedCell=null;}
+  selection();
 }
-function updateSelection(){
+function selection(){
   if(!mission)return;
-  const build=$('confirmBuild'),upgrade=$('upgradeButton'),sell=$('sellButton');
-  // CSS может переопределить HTML hidden, поэтому видимость задаётся и явно.
-  upgrade.hidden=true;sell.hidden=true;upgrade.style.display='none';sell.style.display='none';
-  build.hidden=false;build.style.display='inline-flex';
+  const info=$('selectionInfo'),confirm=$('confirmBuild'),upgradeButton=$('upgradeButton'),
+    sellButton=$('sellButton'),commandButton=$('commandButton');
+  for(const b of [confirm,upgradeButton,sellButton,commandButton])b.hidden=true;
   if(mode==='inspect'){
-    build.hidden=true;build.style.display='none';
-    const tower=mission.towers.find(t=>t.id===selectedTowerId);
-    if(!tower) {
-      $('selectionInfo').textContent='Нажмите на установленную башню, чтобы улучшить или продать её.';
-      return;
-    }
-    const cost=TURRET.cost[tower.level]||0;
-    const refund=Math.floor(tower.spent*.6);
-    $('selectionInfo').textContent='Турель #'+tower.id+' · уровень '+tower.level+'/3 · радиус '+towerRange(tower).toFixed(1)+' клетки.';
-    upgrade.hidden=false;sell.hidden=false;upgrade.style.display='inline-flex';sell.style.display='inline-flex';
-    upgrade.disabled=tower.level>=3 || cost>mission.supply;
-    upgrade.textContent=tower.level>=3?'Максимальный уровень':'Улучшить · '+cost+' ЭС';
-    sell.textContent='Продать · +'+refund+' ЭС';
+    const t=mission.towers.find(o=>o.id===selectedId);
+    const u=mission.units.find(o=>o.id===selectedId&&o.hp>0);
+    if(t){
+      const spec=TOWERS[t.type],price=spec.cost[t.level],refund=Math.floor(t.spent*.6);
+      info.textContent=spec.name+' · уровень '+t.level+'/3 · радиус '+towerRange(t).toFixed(1);
+      upgradeButton.hidden=false;upgradeButton.disabled=t.level===3||mission.supply<price;
+      upgradeButton.textContent=t.level===3?'Максимальный уровень':'Улучшить · '+price+' ЭС';
+      sellButton.hidden=false;sellButton.textContent='Продать · +'+refund+' ЭС';
+    } else if(u){
+      info.textContent=moveCommand?'Теперь выберите точку назначения дрона на карте.':
+        'Разведдрон: HP '+Math.ceil(u.hp)+' / '+u.maxHp+'. Атакует наземных врагов.';
+      commandButton.hidden=false;commandButton.textContent=moveCommand?'Отменить перемещение':'Переместить дрон';
+    }else info.textContent='Нажмите на установленную башню или дрон, чтобы открыть команды.';
     return;
   }
-  if(!selectedCell) {
-    $('selectionInfo').textContent='Выберите подсвеченную площадку. Покупка происходит после подтверждения.';
-    build.disabled=true;return;
-  }
-  const check=validateBuild(mission,selectedCell.col,selectedCell.row);
-  $('selectionInfo').textContent=check.ok?
-    'Площадка ['+(selectedCell.col+1)+', '+(selectedCell.row+1)+'] готова. Радиус стрельбы отмечен на поле.':check.reason;
-  build.disabled=!check.ok;
+  confirm.hidden=false;confirm.textContent='Построить · '+buildCost(selectedType)+' ЭС';
+  if(!selectedCell){info.textContent='Выберите '+(TRAPS[selectedType]?'янтарную метку на тропе':UNITS[selectedType]?'любую клетку для дрона':'светящуюся строительную площадку')+'.';confirm.disabled=true;return;}
+  const check=canBuild(mission,selectedType,selectedCell.col,selectedCell.row);
+  info.textContent=check.ok?'Выбрана клетка '+(selectedCell.col+1)+' × '+(selectedCell.row+1)+'. Нажмите «Построить».':check.reason;
+  confirm.disabled=!check.ok;
 }
-function buildTower(){
-  if(!mission || !selectedCell || mode!=='build')return;
-  const r=placeTower(mission,selectedCell.col,selectedCell.row);
-  if(!r.ok){notify(r.reason);updateSelection();return;}
-  selectedCell=null;
-  $('fieldTip').textContent='Турель установлена. Постройте ещё одну или запускайте волну.';
-  updateSelection();updateHud();
+function buildSelected(){
+  if(!mission||!selectedCell||mode!=='build')return;
+  const result=build(mission,selectedType,selectedCell.col,selectedCell.row);
+  if(!result.ok){toast(result.reason);selection();return;}
+  selectedCell=null;selection();hud();
 }
 function upgradeSelected(){
-  if(!mission || selectedTowerId===null)return;
-  const r=upgradeTower(mission,selectedTowerId);
-  if(!r.ok)notify(r.reason);
-  updateSelection();updateHud();
+  const result=upgrade(mission,selectedId);if(!result.ok)toast(result.reason);
+  selection();hud();
 }
 function sellSelected(){
-  if(!mission || selectedTowerId===null)return;
-  const r=sellTower(mission,selectedTowerId);
-  if(!r.ok)notify(r.reason);
-  else {notify('Вернулось '+r.refund+' ЭС');selectedTowerId=null;}
-  updateSelection();updateHud();
+  const result=sell(mission,selectedId);
+  if(result.ok){selectedId=null;toast('Возвращено '+result.refund+' ЭС.');}
+  else toast(result.reason);
+  selection();hud();
 }
-function beginWave(){
-  if(!mission)return;
-  const r=startWave(mission);
-  if(!r.ok){notify(r.reason);return;}
-  if(!attemptCounted) {markAttempt(progress);attemptCounted=true;save();}
-  $('fieldTip').textContent='Волна '+r.number+' идёт. Турели атакуют автоматически.';
-  updateHud();
+function nextWave(){
+  const result=startWave(mission);
+  if(!result.ok){toast(result.reason);return;}
+  if(!attemptCounted){markAttempt(progress,selectedMission);save();attemptCounted=true;}
+  $text('fieldTip','Волна '+(mission.waveIndex+1)+' началась. Следите за приборами и мобильной группой.');
+  hud();
 }
-function updateHud(){
+function hud(){
   if(!mission)return;
-  const phase=mission.phase;
-  const phaseNames={preparation:'ПОДГОТОВКА',intermission:'МЕЖДУ ВОЛНАМИ',combat:'ИДЁТ БОЙ',victory:'ПОБЕДА',defeat:'ПОРАЖЕНИЕ'};
-  $('gamePhase').textContent=paused?'ПАУЗА':phaseNames[phase];
-  $('hudHp').textContent=Math.ceil(mission.targetHp)+' / '+GENERATOR.maxHp;
-  $('hpBar').style.width=(100*mission.targetHp/GENERATOR.maxHp)+'%';
-  $('hudInstall').textContent=missionProgress(mission)+'%';
-  $('installBar').style.width=missionProgress(mission)+'%';
-  $('hudWave').textContent=Math.max(0,mission.waveIndex+1)+' / '+WAVES.length;
-  $('hudSupply').textContent=Math.floor(mission.supply)+' ЭС';
-  $('hudKills').textContent=mission.kills;
-  $('pauseButton').textContent=paused?'▶ Продолжить':'⏸ Пауза';
-  $('speedButton').textContent='Скорость '+speed+'×';
-  const canStart=phase==='preparation'||phase==='intermission';
-  $('startWave').disabled=!canStart;
-  $('startWave').textContent=canStart?'Запустить волну '+(mission.waveIndex+2)+' →':
-    mission.waveIndex===WAVES.length-1?'Все волны запущены':'Волна в процессе';
-  if(canStart){
-    const info=WAVES[mission.waveIndex+1];
-    $('nextWaveInfo').textContent='Волна '+(mission.waveIndex+2)+': '+info.count+' Искрошмыгов, западный подход. Интервал '+info.interval+' сек.';
+  const def=mission.config,phase=mission.phase;
+  const primary=mission.team?mission.team.hp:mission.targetHp;
+  const primaryMax=mission.team?mission.team.maxHp:def.objective.maxHp;
+  $text('hudTargetLabel',mission.team?'Группа · прибор '+Math.ceil(mission.targetHp)+' HP':'Критический прибор');
+  $text('hudHp',Math.ceil(primary)+' / '+primaryMax);$('hpBar').style.width=(primary/primaryMax*100)+'%';
+  const stage=def.objective.type==='escort'?'Путь к эвакуации':
+    def.objective.type==='remote'&&mission.team&&!mission.team.atDestination?'Доставка оборудования':
+    def.objective.type==='hold'?'Безопасное сканирование':'Монтаж / исследование';
+  $text('hudScienceLabel',stage);
+  $text('hudInstall',objectiveProgress(mission)+'%');$('installBar').style.width=objectiveProgress(mission)+'%';
+  $text('hudWave',Math.max(0,mission.waveIndex+1)+' / '+def.waves.length);
+  $text('hudSupply',Math.floor(mission.supply)+' ЭС');$text('hudKills',mission.kills);
+  const names={preparation:'ПОДГОТОВКА',combat:'ИДЁТ БОЙ',intermission:'МЕЖДУ ВОЛНАМИ'};
+  $text('gamePhase',paused?'ПАУЗА':names[phase]||phase.toUpperCase());
+  $text('pauseButton',paused?'▶ Продолжить':'⏸ Пауза');$text('speedButton','Скорость '+speed+'×');
+  const ready=['preparation','intermission'].includes(phase);
+  $('startWave').disabled=!ready;
+  $text('startWave',ready?'Запустить волну '+(mission.waveIndex+2)+' →':'Волна в процессе');
+  if(ready){
+    const groups=def.waves[mission.waveIndex+1]?.groups||[];
+    $text('nextWaveInfo',groups.map(g=>g.count+' × '+ENEMIES[g.type].name+(g.route==='air'?' (воздух)':g.route==='north'?' (север)':'')).join(' · '));
   }else{
-    $('nextWaveInfo').textContent=mission.waveIndex===WAVES.length-1 && mission.wave===null?
-      'Все противники побеждены. Дождитесь завершения монтажа.':
-      'Защищайте генератор, пока идёт атака.';
+    $text('nextWaveInfo',mission.wave===null?'Ожидайте выполнения научной задачи.':
+      'Волна в бою. Обороняйте приоритетные объекты.');
   }
-  updateSelection();
+  selection();
 }
-function settleMission() {
-  if(!mission || resolved || !['victory','defeat'].includes(mission.phase))return;
+function finishMission(){
+  if(resolved||!mission||!['victory','defeat'].includes(mission.phase))return;
   resolved=true;
-  const win=mission.phase==='victory';
-  let prize=null;
-  if(win){prize=grantVictory(progress,mission.stars);save();}
-  const record=progress.sectors['sector-01'];
-  $('resultsBadge').textContent=win?'ОПЕРАЦИЯ ЗАВЕРШЕНА':'ОПЕРАЦИЯ ПРЕРВАНА';
-  $('resultsTitle').textContent=win?'Купол установлен':'Генератор потерян';
-  $('resultsStars').textContent=win?'★'.repeat(mission.stars)+'☆'.repeat(3-mission.stars):'☆☆☆';
-  $('resultDescription').textContent=win?
-    'Исследователи завершили монтаж, оборона удержала линию. Лучший результат: '+record.bestStars+' из 3 звёзд.':
-    'Экспедиция отступила: '+mission.outcomeReason+'. Вы можете попробовать снова без потери постоянных ресурсов.';
-  const stats=[
-    ['Состояние генератора',Math.ceil(mission.targetHp)+' / '+GENERATOR.maxHp],
-    ['Повержено существ',String(mission.kills)],
-    ['Состояние монтажа',missionProgress(mission)+'%']
-  ];
+  const success=mission.phase==='victory',def=mission.config;
+  const prize=success?grantVictory(progress,selectedMission,mission.stars):null;
+  if(success)save();
+  $text('resultsSector','ОТЧЁТ // СЕКТОР '+String(def.number).padStart(2,'0'));
+  $text('resultsBadge',success?(campaignComplete(progress)?'ПЕРВАЯ ГЛАВА ЗАВЕРШЕНА':'МИССИЯ ВЫПОЛНЕНА'):'ЭКСПЕДИЦИЯ ОТСТУПИЛА');
+  $text('resultsTitle',success?(campaignComplete(progress)?'Карта исследована':def.name+' — успех'):'Задание провалено');
+  $text('resultsStars',success?'★'.repeat(mission.stars)+'☆'.repeat(3-mission.stars):'☆☆☆');
+  $text('resultDescription',success?
+    'Лучший результат: '+record(selectedMission).bestStars+'/3 звёзд. '+(campaignComplete(progress)?
+    'Все шесть секторов первой главы доступны для повторного прохождения.':'Следующий сектор открыт на карте.'):
+    mission.outcomeReason+'. Попробуйте изменить построение обороны.');
   const root=$('resultStats');root.replaceChildren();
-  stats.forEach(([label,value])=>{
-    const box=document.createElement('div'),l=document.createElement('span'),v=document.createElement('strong');
-    l.textContent=label;v.textContent=value;box.append(l,v);root.append(box);
-  });
-  const reward=$('rewardBox');reward.replaceChildren();
-  reward.classList.toggle('empty',!win);
-  const a=document.createElement('strong'),b=document.createElement('small');
-  a.textContent=win?'+'+prize.materials+' материалов · +'+prize.data+' данных':'Награда за эту попытку: 0';
-  b.textContent=win?(prize.first?'Включена разовая премия за первую победу.':'Повторное прохождение — обычная награда.'):'Дополнительные звёзды и ресурсы даются только за победу.';
-  reward.append(a,b);
-  displayScreen('results');
+  const stats=[['Прибор',Math.ceil(mission.targetHp)+' / '+def.objective.maxHp],
+    [mission.team?'HP группы':'Уничтожено',mission.team?Math.ceil(mission.team.hp)+' / '+mission.team.maxHp:mission.kills],
+    ['Прогресс',objectiveProgress(mission)+'%']];
+  for(const [label,value] of stats){
+    const cell=element('div');cell.append(element('span','',label),element('strong','',String(value)));root.append(cell);
+  }
+  const reward=$('rewardBox');reward.replaceChildren();reward.classList.toggle('empty',!success);
+  reward.append(element('strong','',success?'+'+prize.materials+' материалов · +'+prize.data+' данных':'Награда: 0'),
+    element('small','',success?prize.first?'Включена разовая премия за первую победу.':'Повторная победа — только обычная награда.':
+      'Постоянные ресурсы при поражении не теряются.'));
+  show('results');
 }
 function tick(now){
   requestAnimationFrame(tick);
-  if(currentScreen!=='mission' || !mission){lastFrame=now;return;}
+  if(screen!=='mission'||!mission){lastFrame=now;return;}
   if(!lastFrame)lastFrame=now;
-  const elapsed=Math.min(Math.max(0,now-lastFrame)/1000,.25);
-  lastFrame=now;
-  if(!paused && mission.phase==='combat'){
+  const elapsed=Math.min(.25,Math.max(0,(now-lastFrame)/1000));lastFrame=now;
+  if(!paused&&mission.phase==='combat'){
     accumulator+=elapsed*speed;
-    let count=0;
-    while(accumulator>=STEP && count<MAX_STEPS && mission.phase==='combat'){
-      updateMission(mission,STEP);accumulator-=STEP;count++;
+    let n=0;
+    while(accumulator>=STEP&&n<MAX_STEPS&&mission.phase==='combat'){
+      updateMission(mission,STEP);accumulator-=STEP;n++;
     }
-    if(count===MAX_STEPS)accumulator=0;
+    if(n===MAX_STEPS)accumulator=0;
   }
-  battlefield.render(mission,{selectedCell,selectedTowerId,mode,paused});
-  if(mission.phase==='victory'||mission.phase==='defeat')settleMission();
-  else if(now-lastHudAt>=100){lastHudAt=now;updateHud();}
+  field.render(mission,{selectedCell,selectedId,selectedType,mode,paused});
+  if(['victory','defeat'].includes(mission.phase))finishMission();
+  else if(now-lastHud>100){lastHud=now;hud();}
 }
-function bind(id,handler){$(id).addEventListener('click',handler);}
-bind('continueButton',goCamp);
-bind('homeShortcut',()=>{
-  if(currentScreen==='mission')$('quitDialog').showModal();
-  else displayScreen('home');
+const on=(id,fn)=>$(id).addEventListener('click',fn);
+on('continueButton',camp);
+on('homeShortcut',()=>screen==='mission'?$('quitDialog').showModal():show('home'));
+on('homeHelp',()=>$('helpDialog').showModal());
+on('newGameButton',()=>{
+  if(!window.confirm('Начать заново? Все звёзды, технологии и ресурсы будут удалены.'))return;
+  progress=newProgress();mission=null;selectedMission='sector-01';save();toast('Создана новая экспедиция.');camp();
 });
-bind('homeHelp',()=>$('helpDialog').showModal());
-bind('newGameButton',()=>{
-  if(!window.confirm('Начать новую экспедицию? Все накопленные ресурсы, звёзды и исследования будут сброшены.'))return;
-  progress=newProgress();mission=null;save();
-  $('continueButton').textContent='Начать экспедицию';
-  notify('Начата новая экспедиция.');
-  goCamp();
-});
-bind('toMap',goMap);bind('mapBack',goCamp);bind('sector01',()=>notify('Выбран сектор 01. Нажмите «Начать миссию» справа.'));
-bind('mapPlay',playFromMap);
-bind('mapBrief',()=>showBriefing({afterPlay:false,returnTo:'map'}));
-bind('briefPrevious',()=>{briefingIndex=Math.max(0,briefingIndex-1);renderBriefing();});
-bind('briefNext',()=>{if(briefingIndex>=BRIEFING.length-1)finishBriefing();else{briefingIndex++;renderBriefing();}});
-bind('briefSkip',finishBriefing);
-bind('briefClose',leaveBriefingWithoutFinishing);
-bind('researchButton',()=>{
-  const result=purchaseResearch(progress,'precision');
-  if(result.ok){save();notify('Точный привод I изучен. Турели наносят +10% урона.');updateCamp();}
-  else notify(result.reason);
-});
-bind('buildMode',()=>{mode='build';selectedTowerId=null;syncModeButtons();updateSelection();});
-bind('inspectMode',()=>{mode='inspect';selectedCell=null;syncModeButtons();updateSelection();});
-bind('confirmBuild',buildTower);bind('upgradeButton',upgradeSelected);bind('sellButton',sellSelected);
-bind('startWave',beginWave);
-bind('pauseButton',()=>{if(!mission)return;paused=!paused;accumulator=0;updateHud();});
-bind('speedButton',()=>{speed=speed===1?2:1;accumulator=0;updateHud();});
-bind('zoomOut',()=>battlefield?.changeZoom(1/1.2));
-bind('zoomIn',()=>battlefield?.changeZoom(1.2));
-bind('missionBrief',()=>showBriefing({afterPlay:false,returnTo:'mission'}));
-bind('quitMission',()=>$('quitDialog').showModal());
-bind('quitCancel',()=>$('quitDialog').close());
-bind('quitConfirm',()=>{$('quitDialog').close();mission=null;goCamp();});
-bind('resultsCamp',()=>{mission=null;goCamp();});
-bind('resultsRetry',launchMission);
+on('toMap',map);on('mapBack',camp);on('mapPlay',play);
+on('mapBrief',()=>{if(isUnlocked(selectedMission))briefing();});
+on('briefPrevious',()=>{briefIndex=Math.max(0,briefIndex-1);drawBrief();});
+on('briefNext',()=>{if(briefIndex>=activeSector().briefing.length-1)briefingDone();else{briefIndex++;drawBrief();}});
+on('briefSkip',briefingDone);on('briefClose',briefingClosed);
+on('missionBrief',()=>briefing({returnTo:'mission'}));
+on('quitMission',()=>$('quitDialog').showModal());
+on('quitCancel',()=>$('quitDialog').close());
+on('quitConfirm',()=>{$('quitDialog').close();mission=null;camp();});
+on('confirmBuild',buildSelected);on('upgradeButton',upgradeSelected);on('sellButton',sellSelected);
+on('commandButton',()=>{moveCommand=!moveCommand;selection();});
+on('startWave',nextWave);
+on('pauseButton',()=>{paused=!paused;accumulator=0;hud();});
+on('speedButton',()=>{speed=speed===1?2:1;accumulator=0;hud();});
+on('zoomOut',()=>field?.changeZoom(1/1.2));on('zoomIn',()=>field?.changeZoom(1.2));
+on('resultsCamp',()=>{mission=null;camp();});
+on('resultsRetry',()=>launch(selectedMission));
 document.addEventListener('keydown',event=>{
-  if(currentScreen!=='mission' || event.target.closest('button,input,textarea,dialog'))return;
-  if(event.code==='Space'){event.preventDefault();paused=!paused;updateHud();}
-  else if(event.key==='Escape'){selectedCell=null;selectedTowerId=null;updateSelection();}
-  else if(event.key==='+'||event.key==='=')battlefield?.changeZoom(1.2);
-  else if(event.key==='-')battlefield?.changeZoom(1/1.2);
-  else if(battlefield && event.key.toLowerCase() in {w:1,a:1,s:1,d:1}){
-    const move=.75;
-    if(event.key.toLowerCase()==='w')battlefield.camY-=move;
-    if(event.key.toLowerCase()==='s')battlefield.camY+=move;
-    if(event.key.toLowerCase()==='a')battlefield.camX-=move;
-    if(event.key.toLowerCase()==='d')battlefield.camX+=move;
-    battlefield.clampCamera();
+  if(screen!=='mission'||!mission||event.target.closest('button,input,textarea,dialog'))return;
+  const k=event.key.toLowerCase();
+  if(event.code==='Space'){event.preventDefault();paused=!paused;accumulator=0;hud();}
+  else if(event.key==='Escape'){moveCommand=false;selectedId=null;selectedCell=null;selection();}
+  else if(k==='+'||k==='=')field?.changeZoom(1.2);
+  else if(k==='-')field?.changeZoom(1/1.2);
+  else if(['w','a','s','d'].includes(k)&&field){
+    if(k==='w')field.camY-=.8;if(k==='s')field.camY+=.8;
+    if(k==='a')field.camX-=.8;if(k==='d')field.camX+=.8;
+    field.clampCamera();
   }
 });
-document.addEventListener('visibilitychange',()=>{
-  if(document.hidden && currentScreen==='mission' && mission) {paused=true;accumulator=0;}
-  lastFrame=0;
-});
-window.addEventListener('blur',()=>{if(currentScreen==='mission'&&mission){paused=true;accumulator=0;}});
-if(loaded.warning)window.setTimeout(()=>notify(loaded.warning),500);
-if(progress.sectors['sector-01'].victories>0)$('continueButton').textContent='Продолжить экспедицию';
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&screen==='mission'&&mission){paused=true;accumulator=0;}lastFrame=0;});
+window.addEventListener('blur',()=>{if(screen==='mission'&&mission){paused=true;accumulator=0;}});
+if(loadWarning)setTimeout(()=>toast(loadWarning),500);
+if(MISSION_IDS.some(id=>record(id).victories>0))$text('continueButton','Продолжить экспедицию');
 requestAnimationFrame(tick);
