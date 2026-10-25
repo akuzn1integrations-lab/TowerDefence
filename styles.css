@@ -82,3 +82,20 @@
   .top-right .nav-link{font-size:.76rem;padding:5px 8px}
   .brand{width:100%}
 }
+
+/* 24-sector campaign navigator: eight chapters, three missions per chapter */
+.worldmap{min-height:620px}
+.sector-nodes{display:block;width:min(96%,800px);max-height:680px;overflow-y:auto;overscroll-behavior:contain;padding:10px 16px 45px;scrollbar-color:#4c9088 #0a2938;scrollbar-width:thin}
+.chapter-block{margin:0 0 17px;padding:12px;background:#082331a8;border:1px solid #2c5964;border-radius:12px}
+.chapter-name{font:700 .9rem Manrope,system-ui,sans-serif;text-transform:uppercase;letter-spacing:.08em;color:#8fdfd6;margin:0 0 12px}
+.chapter-sector-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.chapter-sector-grid .sector-chip{width:100%;min-height:91px;padding:11px}
+.worldmap .map-fog{z-index:4;right:25px;bottom:8px;background:#091e29c5;padding:5px}
+.archive-entries{max-height:730px}
+@media(max-width:720px){
+ .worldmap{min-height:420px}
+ .sector-nodes{max-height:500px;width:100%;padding:8px 5px 34px}
+ .chapter-block{padding:9px}
+ .chapter-sector-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .chapter-sector-grid .sector-chip{min-height:82px}
+}
