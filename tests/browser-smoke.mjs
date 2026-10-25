@@ -55,7 +55,7 @@ try{
     return v.result.value;
   };
   const check=async(expression,label)=>assert.equal(await run(expression),true,label);
-  await waitFor(()=>run("document.documentElement.dataset.appReady==='true'"));
+  await waitFor(()=>run("document.documentElement?.dataset?.appReady==='true'"));
   await check("document.querySelector('#screen-home').classList.contains('active')",'home');
   await run("document.querySelector('#continueButton').click()");
   await check("document.querySelector('#screen-camp').classList.contains('active')",'camp');
