@@ -366,3 +366,41 @@ test('вся кампания 07–24 проходима после 06 без р
   assert.equal(MISSION_IDS.reduce((n,id)=>n+p.sectors[id].bestStars,0)>=24,true);
   assert.ok(p.resources.materials>startingMaterials,'первые победы выдают ресурсы');
 });
+
+
+test('крио-маяк наносит урон и замедляет наземную цель',()=>{
+  const mission=createMission('sector-07'),route=mission.config.map.routes.west,point=route[10];
+  const site=mission.config.map.buildCells.find(c=>Math.hypot(c.col-point.col,c.row-point.row)<2.5);
+  assert.ok(site,'доступна точка в радиусе маршрута');
+  assert.equal(build(mission,'cryo',site.col,site.row).ok,true);
+  const enemy={id:999,type:'skitter',route:'west',progress:10,x:point.col+.5,y:point.row+.5,
+    hp:55,maxHp:55,slowed:0,slowAmount:0,chasing:false,contactTime:0,alive:true};
+  mission.enemies.push(enemy);
+  mission.phase='combat';
+  updateMission(mission,1/60);
+  assert.ok(enemy.hp<55,'крио-маяк попал во врага');
+  assert.ok(enemy.slowed>0,'на противнике действует замедление');
+});
+test('акустическая приманка не расходует заряд на босса',()=>{
+  const mission=createMission('sector-24'),route=mission.config.map.routes.west,point=route[5];
+  assert.equal(build(mission,'lure',point.col,point.row).ok,true);
+  const enemy={id:999,type:'monarch',route:'west',progress:5,x:point.col+.5,y:point.row+.5,
+    hp:2050,maxHp:2050,slowed:0,slowAmount:0,chasing:false,contactTime:0,alive:true};
+  mission.enemies.push(enemy);
+  mission.phase='combat';
+  updateMission(mission,1/60);
+  assert.equal(enemy.slowed,0);
+  assert.equal(mission.traps[0].charges,3);
+});
+test('ремонтный бот восстанавливает критический объект без отмены факта повреждения',()=>{
+  const mission=createMission('sector-20'),goal=mission.config.map.target;
+  const site=mission.config.map.buildCells.find(c=>Math.hypot(c.col+.5-goal.x,c.row+.5-goal.y)<=UNITS.repair.range);
+  assert.ok(site,'есть площадка рядом с прибором');
+  assert.equal(build(mission,'repair',site.col,site.row).ok,true);
+  mission.targetHp=mission.config.objective.maxHp-20;
+  mission.targetDamage=20;
+  mission.phase='combat';
+  for(let i=0;i<60;i++)updateMission(mission,1/60);
+  assert.ok(mission.targetHp>mission.config.objective.maxHp-20);
+  assert.equal(mission.targetDamage,20,'факт повреждения важен для третьей звезды');
+});
