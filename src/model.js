@@ -104,7 +104,7 @@ function spawn(state,g){
   const def=ENEMIES[g.type],r=state.config.map.routes[g.route];
   state.enemies.push({id:state.nextId++,type:g.type,route:g.route,progress:0,
     x:r[0].col+.5,y:r[0].row+.5,hp:def.hp,maxHp:def.hp,
-    slowed:0,slowAmount:0,chasing:false,alive:true});
+    slowed:0,slowAmount:0,chasing:false,contactTime:0,alive:true});
 }
 function inflict(state,e,amount,kind='kinetic',piercing=0){
   if(!e.alive || amount<=0)return false;
@@ -204,6 +204,8 @@ function moveEnemies(state,dt){
       if(dist(e,target)<=.85){
         const dealt=Math.min(team.hp,info.damage*dt);
         team.hp-=dealt;team.damageTaken+=dealt;
+        e.contactTime+=dt;
+        if(e.contactTime>=2.5)e.alive=false; // после короткой атаки зверь отступает; награды за прорыв нет
       }
     } else {
       const route=state.config.map.routes[e.route];
@@ -220,6 +222,8 @@ function moveEnemies(state,dt){
       if(e.progress>=route.length-1-EPS){
         const damage=Math.min(state.targetHp,info.damage*dt);
         state.targetHp-=damage;state.targetDamage+=damage;
+        e.contactTime+=dt;
+        if(e.contactTime>=2.5)e.alive=false;
       }
     }
     // Nearby enemies may damage a deployed drone, but cannot select it from across the map.
