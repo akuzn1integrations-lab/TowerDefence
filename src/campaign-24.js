@@ -127,7 +127,7 @@ function createMission(blueprint,makeMap){
   if(hasNorth)routes.north=NORTH[pattern];
   if(hasAir)routes.air=AIR;
   const obj={
-    type:mode,maxHp:300+(n-7)*18,
+    type:mode,maxHp:430+(n-7)*20,
     duration:mode==='escort'?0:mode==='relay'?72+(n-7)*2:90+(n-7)*3,
     ...(mode==='hold'?{holdRadius:1.75}:{}),
     ...(travel?{groupHp:260+(n-7)*15,teamSpeed:.95}:{}),
@@ -147,7 +147,7 @@ function createMission(blueprint,makeMap){
     id:'sector-'+String(n).padStart(2,'0'),number:n,name:blueprint.name,biome,
     summary:blueprint.story+' Главная угроза: '+blueprint.focus+'.',
     objective:obj,map,
-    startSupply:1250+(n-7)*65,waveBonus:210+(n-7)*12,
+    startSupply:1500+(n-7)*75,waveBonus:230+(n-7)*12,
     allowed:equipment(n),
     waves:blueprint.waves.map(groups=>({groups})),
     stars:[
