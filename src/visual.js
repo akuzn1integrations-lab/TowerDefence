@@ -1,7 +1,7 @@
 import { ENEMIES, TOWERS, TRAPS, UNITS, cellKey, center } from './config.js';
 import { towerRange } from './model.js';
 import {
-  drawTerrainTile,drawTower,drawEnemy,drawUnit,drawTrap,drawCore,drawResearchTeam,paletteFor
+  drawTerrainTile,drawTower,drawEnemy,drawUnit,drawTrap,drawCore,drawResearchTeam,paletteFor,biomeImageFor
 } from './art.js';
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 export class Battlefield {
@@ -103,7 +103,9 @@ export class Battlefield {
     can.width=width*tile;can.height=height*tile;
     const c=can.getContext('2d');if(!c)return;
     const biome=this.state.config.biome;
-    for(let row=0;row<height;row++)for(let col=0;col<width;col++)
+    const raster=biomeImageFor(biome);
+    if(raster)c.drawImage(raster,0,0,can.width,can.height);
+    else for(let row=0;row<height;row++)for(let col=0;col<width;col++)
       drawTerrainTile(c,col*tile,row*tile,tile,col,row,biome);
     // Roads follow the gameplay path exactly, not the illustration's approximate route.
     const routeColors=['#51606c','#8496a1','#c5d3d2'];
