@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 620" role="img" aria-label="Научная колония Нова-7 под энергетическим куполом">
+<defs>
+  <linearGradient id="sky" x2="0" y2="1"><stop stop-color="#071323"/><stop offset=".55" stop-color="#1d3052"/><stop offset="1" stop-color="#15373f"/></linearGradient>
+  <linearGradient id="rock" x2="0" y2="1"><stop stop-color="#687886"/><stop offset=".5" stop-color="#293746"/><stop offset="1" stop-color="#101d2b"/></linearGradient>
+  <linearGradient id="base" x2="0" y2="1"><stop stop-color="#b4bfcb"/><stop offset=".32" stop-color="#516778"/><stop offset=".65" stop-color="#233c50"/><stop offset="1" stop-color="#12232f"/></linearGradient>
+  <linearGradient id="light" x2="0" y2="1"><stop stop-color="#e1fcff"/><stop offset=".3" stop-color="#5ae8fe"/><stop offset="1" stop-color="#1370ce"/></linearGradient>
+  <radialGradient id="halo"><stop stop-color="#71e7ff" stop-opacity=".24"/><stop offset=".65" stop-color="#3fbbff" stop-opacity=".09"/><stop offset="1" stop-color="#3fbbff" stop-opacity="0"/></radialGradient>
+  <radialGradient id="terrain"><stop stop-color="#3d525b"/><stop offset=".65" stop-color="#243840"/><stop offset="1" stop-color="#0b1926"/></radialGradient>
+  <filter id="glow"><feGaussianBlur stdDeviation="7"/></filter>
+  <filter id="soft"><feGaussianBlur stdDeviation="3"/></filter>
+  <pattern id="hex" width="33" height="29" patternUnits="userSpaceOnUse"><path d="M 0 9 L 16 0 33 9 33 20 16 29 0 20Z" fill="none" stroke="#73d8f5" stroke-opacity=".15" stroke-width="1"/></pattern>
+  <pattern id="stars" width="170" height="120" patternUnits="userSpaceOnUse"><circle cx="21" cy="21" r="1.4" fill="#cbe8ff"/><circle cx="150" cy="86" r=".8" fill="#cbe8ff"/><circle cx="84" cy="67" r="1" fill="#a1b6ee"/></pattern>
+</defs>
+<rect width="1000" height="620" fill="url(#sky)"/>
+<rect width="1000" height="620" fill="url(#stars)" opacity=".85"/>
+<ellipse cx="819" cy="120" rx="110" ry="110" fill="#508bc4" opacity=".14"/>
+<circle cx="819" cy="112" r="84" fill="#25426a" stroke="#6edcf2" stroke-opacity=".3" stroke-width="2"/>
+<path d="M746 112Q820 140 896 98M773 41Q798 123 771 179" fill="none" stroke="#5ac6da" stroke-opacity=".16" stroke-width="9"/>
+<path d="M 0 392 100 315 175 357 256 270 360 370 418 287 520 382 597 326 705 392 780 299 900 375 1000 330 V620 H0Z" fill="#192839"/>
+<path d="M0 457 65 401 146 435 235 361 322 417 410 342 545 421 612 359 703 440 840 357 927 430 1000 384 V620 H0Z" fill="url(#rock)" stroke="#648091" stroke-opacity=".24" stroke-width="2"/>
+<path d="M0 548Q235 425 485 475T1000 514V620H0Z" fill="url(#terrain)"/>
+<path d="M-20 583 154 478 252 509 340 468 511 523 721 455 888 500 1030 448" stroke="#69858d" stroke-width="42" opacity=".15" fill="none"/>
+<path d="M-20 583 154 478 252 509 340 468 511 523 721 455 888 500 1030 448" stroke="#91d7e4" stroke-width="2" stroke-dasharray="11 16" opacity=".26" fill="none"/>
+<ellipse cx="489" cy="450" rx="349" ry="143" fill="url(#halo)"/>
+<ellipse cx="489" cy="456" rx="345" ry="113" fill="none" stroke="#59e2ff" stroke-width="6" opacity=".17" filter="url(#glow)"/>
+<path d="M145 465 A345 235 0 0 1 836 465" fill="none" stroke="#74efff" stroke-width="4" opacity=".75"/>
+<path d="M145 465 A345 235 0 0 1 836 465 L 145 465Z" fill="#4fdbfb" opacity=".035"/>
+<path d="M145 465 A345 235 0 0 1 836 465" fill="none" stroke="#b2faff" stroke-opacity=".45" stroke-width="2" filter="url(#glow)"/>
+<rect x="145" y="214" width="691" height="252" fill="url(#hex)" opacity=".55" clip-path="url(#none)"/>
+<ellipse cx="489" cy="471" rx="220" ry="83" fill="#081e2b" stroke="#8accdb" stroke-opacity=".55" stroke-width="5"/>
+<ellipse cx="489" cy="459" rx="198" ry="64" fill="#2a5163" stroke="#6acee9" stroke-width="4"/>
+<ellipse cx="489" cy="451" rx="165" ry="47" fill="#172e40" stroke="#caedf5" stroke-opacity=".4" stroke-width="3"/>
+<!-- modular buildings -->
+<g fill="url(#base)" stroke="#a2c6ce" stroke-width="2.5">
+  <path d="M220 464v-52l31-19 48 2 24 22v50l-29 17h-50Z"/>
+  <path d="M673 470v-58l31-23 51 6 28 22v53l-32 21h-46Z"/>
+  <path d="M333 530v-43l23-19 55 1 21 18v47l-23 17h-54Z"/>
+  <path d="M559 535v-53l27-17 57 2 24 21v48l-29 19h-52Z"/>
+</g>
+<g fill="#0b233a" stroke="#61d8ee" stroke-width="3">
+  <rect x="230" y="429" width="61" height="9" rx="2"/><rect x="693" y="425" width="73" height="9" rx="2"/>
+  <rect x="349" y="497" width="69" height="9" rx="2"/><rect x="575" y="494" width="65" height="9" rx="2"/>
+</g>
+<g fill="#ffb568"><rect x="250" y="452" width="18" height="10"/><rect x="718" y="458" width="17" height="12"/><rect x="373" y="522" width="18" height="9"/><rect x="598" y="519" width="19" height="9"/></g>
+<!-- center reactor -->
+<ellipse cx="487" cy="463" rx="97" ry="42" fill="#0a202e" stroke="#72dffc" stroke-width="5"/>
+<ellipse cx="487" cy="450" rx="78" ry="31" fill="#406077" stroke="#a0ddeb" stroke-width="5"/>
+<path d="M441 449v-110l32-24h27l31 24v110l-24 17h-42Z" fill="url(#base)" stroke="#c2dce4" stroke-width="3"/>
+<path d="M472 328V187l15-33 15 33v141Z" fill="url(#light)" stroke="#b3faff" stroke-width="2"/>
+<path d="M487 154V25" stroke="#5de6ff" stroke-width="9" filter="url(#glow)"/>
+<path d="M487 154V25" stroke="#e4ffff" stroke-width="2"/>
+<rect x="463" y="357" width="48" height="13" rx="4" fill="#49d8f5"/>
+<rect x="458" y="386" width="58" height="12" rx="4" fill="#f9b66a"/>
+<rect x="468" y="414" width="37" height="23" rx="3" fill="#5edbf6"/>
+<g fill="#7ceaff"><circle cx="487" cy="188" r="12"/><circle cx="487" cy="238" r="7"/><circle cx="487" cy="289" r="5"/></g>
+<!-- outer pylons -->
+<g fill="url(#base)" stroke="#78e9f9" stroke-width="3">
+<path d="M161 472v-67l11-13 14 13v67l-12 9Z"/><path d="M811 470v-67l11-13 14 13v67l-12 9Z"/>
+<path d="M313 383v-51l11-15 16 15v51l-13 7Z"/><path d="M651 380v-51l11-15 16 15v51l-13 7Z"/>
+</g>
+<g fill="#75eeff"><circle cx="174" cy="396" r="8"/><circle cx="823" cy="395" r="8"/><circle cx="326" cy="323" r="8"/><circle cx="664" cy="322" r="8"/></g>
+<!-- defence towers -->
+<g fill="#486477" stroke="#b5d1d9" stroke-width="3">
+<ellipse cx="255" cy="356" rx="29" ry="12"/><path d="M233 352v-23l12-11 22 1 11 11v23Z"/>
+<ellipse cx="738" cy="349" rx="29" ry="12"/><path d="M716 346v-23l12-11 22 1 11 11v23Z"/>
+</g>
+<g stroke="#89dfff" stroke-width="9" stroke-linecap="round"><path d="M255 329l-4-33"/><path d="M738 323l6-36"/></g>
+<g fill="#ffac53"><circle cx="255" cy="328" r="4"/><circle cx="738" cy="321" r="4"/></g>
+<!-- environment crystals -->
+<g stroke="#8af1ff" stroke-width="2" fill="#2aa5d1">
+<path d="M76 512 88 473 100 521 87 535Z"/><path d="M105 530 121 492 135 538 123 554Z"/>
+<path d="M900 534 913 481 929 529 916 546Z"/><path d="M870 525 882 503 900 548 880 552Z"/>
+</g>
+<g stroke="#c99cff" stroke-width="2" fill="#834ccc" opacity=".9">
+<path d="M40 586 59 553 78 589 62 606Z"/><path d="M939 594 951 558 969 597 958 613Z"/>
+</g>
+<path d="M0 610Q260 563 485 609T1000 604" stroke="#5ddffa" stroke-opacity=".3" stroke-width="3" fill="none"/>
+</svg>
