@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import {ENEMIES,TOWERS,TRAPS,UNITS,MISSIONS} from '../src/config.js';
 import {
   ART_COLORS,BIOME_ART,paletteFor,drawTerrainTile,drawTower,drawEnemy,drawTrap,
-  drawUnit,drawCore,drawResearchTeam,iconDataURL,biomePreviewURL
+  drawUnit,drawCore,drawResearchTeam,iconDataURL,biomePreviewURL,loadOptionalRasterArt,rasterArtAvailable
 } from '../src/art.js';
 
 function canvasMock(){
@@ -69,4 +69,34 @@ test('HTML подключает графическую тему и кэширо�
   assert.match(visual,/drawEnemy\(/);
   assert.match(visual,/drawCore\(/);
   assert.match(visual,/this\.terrain/);
+});
+
+
+test('optional raster manifest maps exact tower and creature keys without breaking fallback',async()=>{
+  const old={fetch:globalThis.fetch,Image:globalThis.Image,document:globalThis.document};
+  const loaded=[];
+  class FakeImage{
+    set src(value){loaded.push(value);queueMicrotask(()=>this.onload?.());}
+  }
+  try{
+    globalThis.fetch=async()=>({ok:true,json:async()=>({
+      version:1,hero:'assets/generated/hero.webp',
+      towers:{kinetic:'assets/generated/towers/kinetic.webp'},
+      traps:{mine:'assets/generated/traps/mine.webp'},
+      units:{drone:'assets/generated/units/drone.webp'},
+      enemies:{skitter:'assets/generated/enemies/skitter.webp'},
+      biomes:{'Посадочная долина':'assets/generated/biomes/biome-01.webp'}
+    })});
+    globalThis.Image=FakeImage;
+    globalThis.document={baseURI:'http://localhost:4173/',documentElement:{classList:{add(){}}}};
+    assert.equal(await loadOptionalRasterArt(),true);
+    assert.equal(rasterArtAvailable(),true);
+    assert.equal(loaded.length,5);
+    const testCanvas=canvasMock();
+    drawTower(testCanvas.context,'kinetic',20,20,40);
+    drawEnemy(testCanvas.context,'skitter',20,20,40);
+    assert.equal(testCanvas.calls.filter(([name])=>name==='drawImage').length,2);
+  }finally{
+    globalThis.fetch=old.fetch;globalThis.Image=old.Image;globalThis.document=old.document;
+  }
 });
