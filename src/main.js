@@ -9,6 +9,7 @@ import {
 } from './progress.js';
 import { Battlefield } from './visual.js';
 import { AudioDirector } from './audio.js';
+import { biomePreviewURL, iconDataURL } from './art.js';
 
 const $=id=>document.getElementById(id);
 const screens=[...document.querySelectorAll('.screen')];
@@ -113,6 +114,7 @@ function archive(){
   for(const [id,def] of Object.entries(ENEMIES)){
     const discovered=encountered.has(id);
     const item=element('div','archive-entry');
+    if(discovered){const picture=element('img','archive-specimen');picture.src=iconDataURL(id,'enemy',96);picture.alt='';picture.loading='lazy';item.append(picture);}
     item.append(element('strong','',discovered?def.name:'Неизвестный вид'));
     item.append(element('p','',discovered?
       'Здоровье: '+def.hp+' · скорость: '+def.speed+' кл/с · '+(def.air?'летающий':'наземный')+
@@ -139,6 +141,7 @@ function map(){
     if(chapter!==def.biome){
       chapter=def.biome;
       const wrapper=element('section','chapter-block');
+      wrapper.style.setProperty('--biome-image',`url("${biomePreviewURL(def.biome)}")`);
       wrapper.append(element('h3','chapter-name',def.biome+' · '+String(Math.floor((def.number-1)/3)+1).padStart(2,'0')));
       chapterGrid=element('div','chapter-sector-grid');
       wrapper.append(chapterGrid);root.append(wrapper);
@@ -152,6 +155,7 @@ function map(){
     chapterGrid.append(button);
   }
   const def=activeSector(),rec=record(selectedMission),available=isUnlocked(selectedMission);
+  document.querySelector('.sector-detail').style.setProperty('--biome-image',`url("${biomePreviewURL(def.biome)}")`);
   $text('mapBiome',def.biome.toUpperCase()+' // СЕКТОР '+String(def.number).padStart(2,'0'));
   $text('mapTitle',available?def.name:'Неизведанная территория');$text('mapStars','★'.repeat(rec.bestStars)+'☆'.repeat(3-rec.bestStars));
   $text('mapSummary',available?def.summary:'Этот район ещё не исследован. Завершите предыдущую миссию, чтобы получить разведданные.');
@@ -172,6 +176,7 @@ function briefing({toPlay=false,returnTo='map'}={}){
 }
 function drawBrief(){
   const def=activeSector(),frame=def.briefing[briefIndex];
+  $('briefingArt').style.backgroundImage=`linear-gradient(0deg,#041527be,#071f2918),url("${biomePreviewURL(def.biome)}")`;
   $text('briefSector','ПОЛЁТНОЕ ЗАДАНИЕ · СЕКТОР '+String(def.number).padStart(2,'0'));
   $text('briefStep','КАДР '+(briefIndex+1)+' / '+def.briefing.length);
   $text('briefTitle',frame[0]);$text('briefText',frame[1]);
