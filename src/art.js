@@ -51,7 +51,7 @@ export function loadOptionalRasterArt(){
       };
       for(const kind of ['towers','traps','units','enemies'])
         for(const [type,path] of Object.entries(manifest[kind]||{}))
-          load(kind.slice(0,-1).replace('enem','enemy')+':'+type,path,spriteImages);
+          load((kind==='enemies'?'enemy':kind.slice(0,-1))+':'+type,path,spriteImages);
       for(const [biome,path] of Object.entries(manifest.biomes||{}))
         load(biome,path,biomeImages);
       await Promise.all(jobs);
