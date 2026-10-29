@@ -16,6 +16,56 @@ export const BIOME_ART = Object.freeze({
   'Кратер сияния':['#344e70','#1d344e','#627e9e','#83dfff','crater']
 });
 export const paletteFor=biome=>BIOME_ART[biome]||BIOME_ART['Посадочная долина'];
+
+const spriteImages=new Map();
+const biomeImages=new Map();
+let rasterArtPromise=null;
+let rasterLoaded=false;
+export const rasterArtAvailable=()=>rasterLoaded;
+export const biomeImageFor=biome=>biomeImages.get(biome)||null;
+function drawRaster(c,kind,type,x,y,size){
+  const image=spriteImages.get(kind+':'+type);
+  if(!image)return false;
+  const factor=kind==='enemy'?1.06:kind==='unit'?1.24:1.24;
+  c.drawImage(image,x-size*factor/2,y-size*factor/2,size*factor,size*factor);
+  return true;
+}
+/** Optional art pack loader. A missing manifest is normal: the vector game remains complete. */
+export function loadOptionalRasterArt(){
+  if(typeof fetch==='undefined'||typeof Image==='undefined')return Promise.resolve(false);
+  if(rasterArtPromise)return rasterArtPromise;
+  rasterArtPromise=(async()=>{
+    try{
+      const response=await fetch('./assets/generated/manifest.json');
+      if(!response.ok)return false;
+      const manifest=await response.json();
+      if(manifest.version!==1)return false;
+      const jobs=[];
+      const load=(key,path,collection)=>{
+        if(typeof path!=='string'||!path.startsWith('assets/generated/'))return;
+        jobs.push(new Promise(resolve=>{
+          const image=new Image();image.onload=()=>{collection.set(key,image);resolve();};
+          image.onerror=()=>resolve();
+          image.src=new URL('./'+path,document.baseURI).href;
+        }));
+      };
+      for(const kind of ['towers','traps','units','enemies'])
+        for(const [type,path] of Object.entries(manifest[kind]||{}))
+          load(kind.slice(0,-1).replace('enem','enemy')+':'+type,path,spriteImages);
+      for(const [biome,path] of Object.entries(manifest.biomes||{}))
+        load(biome,path,biomeImages);
+      await Promise.all(jobs);
+      rasterLoaded=spriteImages.size>0||biomeImages.size>0;
+      if(rasterLoaded){
+        biomePreviewCache.clear();
+        if(typeof document!=='undefined')document.documentElement.classList.add('raster-art');
+      }
+      return rasterLoaded;
+    }catch{return false;}
+  })();
+  return rasterArtPromise;
+}
+
 const TAU=Math.PI*2;
 const hash=(x,y,k=0)=>{let n=(x*374761393+y*668265263+k*2147483647)|0;n=(n^(n>>>13))*1274126177;return ((n^(n>>>16))>>>0)/4294967295;};
 function path(c,points,color,stroke=null,width=1){
@@ -49,6 +99,7 @@ function barrel(c,angle,length=28,width=7,accent='#71d9ff'){
 }
 const TOWER_ACCENTS={kinetic:'#72caff',pulse:'#53ecff',mortar:'#ffae67',antiAir:'#ffba68',cryo:'#8debff',sonic:'#c98dff'};
 export function drawTower(c,type,x,y,size=44,time=0,level=1,reduced=false){
+  if(drawRaster(c,'tower',type,x,y,size))return;
   const a=TOWER_ACCENTS[type]||ART_COLORS.cyan;
   c.save();c.translate(x,y);c.scale(size/64,size/64);
   plating(c);c.save();
@@ -78,6 +129,7 @@ export function drawTower(c,type,x,y,size=44,time=0,level=1,reduced=false){
   c.restore();
 }
 export function drawTrap(c,type,x,y,size=37,time=0,reduced=false){
+  if(drawRaster(c,'trap',type,x,y,size))return;
   c.save();c.translate(x,y);c.scale(size/64,size/64);
   ellipse(c,0,4,23,10,'#040e17a8');hex(c,20,'#202f45','#899fa8');ring(c,14,'#f5bd64',2);
   if(type==='mine'){
@@ -93,6 +145,7 @@ export function drawTrap(c,type,x,y,size=37,time=0,reduced=false){
 }
 const UNIT_ACCENTS={drone:'#64edff',infantry:'#e4b57e',repair:'#85ffc4'};
 export function drawUnit(c,type,x,y,size=42,time=0,reduced=false){
+  if(drawRaster(c,'unit',type,x,y,size))return;
   c.save();c.translate(x,y+Math.sin(time*3)*(!reduced&&type==='drone'?1.5:0));c.scale(size/64,size/64);
   ellipse(c,0,6,20,9,'#06121b9a');
   if(type==='drone'){
@@ -124,6 +177,7 @@ const ENEMY_STYLE={
   monarch:['#382445','#ef63ff','boss']
 };
 export function drawEnemy(c,type,x,y,size=32,time=0,reduced=false){
+  if(drawRaster(c,'enemy',type,x,y,size))return;
   const [base,glow,shape]=ENEMY_STYLE[type]||ENEMY_STYLE.skitter;
   c.save();c.translate(x,y);c.scale(size/64,size/64);
   ellipse(c,0,9,shape==='boss'?26:20,9,'#0a0c1c99');
@@ -221,7 +275,9 @@ export function biomePreviewURL(biome){
   const canvas=document.createElement('canvas');canvas.width=384;canvas.height=224;
   const c=canvas.getContext('2d');if(!c)return '';
   const cols=12,rows=7,sz=32,accent=paletteFor(biome)[3];
-  for(let row=0;row<rows;row++)for(let col=0;col<cols;col++)
+  const raster=biomeImageFor(biome);
+  if(raster)c.drawImage(raster,0,0,384,224);
+  else for(let row=0;row<rows;row++)for(let col=0;col<cols;col++)
     drawTerrainTile(c,col*sz,row*sz,sz,col,row,biome);
   c.save();c.beginPath();
   for(let x=0;x<=384;x+=4){
