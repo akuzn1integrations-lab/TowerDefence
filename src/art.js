@@ -210,3 +210,36 @@ export function iconDataURL(type,kind='tower',size=86){
   f(c,type,size/2,size/2,size*.86,0);
   return canvas.toDataURL('image/png');
 }
+
+
+// Miniature level illustrations used in briefing, sector selection and archive.
+// Cache data URLs: a map refresh must not regenerate eight canvases.
+const biomePreviewCache=new Map();
+export function biomePreviewURL(biome){
+  if(typeof document==='undefined')return '';
+  if(biomePreviewCache.has(biome))return biomePreviewCache.get(biome);
+  const canvas=document.createElement('canvas');canvas.width=384;canvas.height=224;
+  const c=canvas.getContext('2d');if(!c)return '';
+  const cols=12,rows=7,sz=32,accent=paletteFor(biome)[3];
+  for(let row=0;row<rows;row++)for(let col=0;col<cols;col++)
+    drawTerrainTile(c,col*sz,row*sz,sz,col,row,biome);
+  c.save();c.beginPath();
+  for(let x=0;x<=384;x+=4){
+    const y=120+Math.sin((x/384)*TAU*1.6)*42+Math.cos(x/27)*8;
+    x===0?c.moveTo(x,y):c.lineTo(x,y);
+  }
+  c.strokeStyle='#182b3abb';c.lineWidth=31;c.lineCap='round';c.stroke();
+  c.strokeStyle='#9aa5a6bb';c.lineWidth=22;c.stroke();
+  c.strokeStyle='#536a7ab4';c.lineWidth=2;c.setLineDash([8,9]);c.stroke();c.setLineDash([]);
+  for(let i=0;i<4;i++){
+    const x=45+i*95,y=75+(i%2)*65;
+    ellipse(c,x,y+5,15,8,'#00131a88');
+    c.save();c.translate(x,y);hex(c,14,'#203b4e','#8deaff');ring(c,9,'#54d6fb',2);
+    light(c,0,0,2,accent);c.restore();
+  }
+  const vignette=c.createRadialGradient(192,110,40,192,110,260);
+  vignette.addColorStop(0,'#041a2500');vignette.addColorStop(1,'#020b1ec0');
+  c.fillStyle=vignette;c.fillRect(0,0,384,224);
+  c.restore();
+  const result=canvas.toDataURL('image/png');biomePreviewCache.set(biome,result);return result;
+}
