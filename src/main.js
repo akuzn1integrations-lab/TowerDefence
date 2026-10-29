@@ -65,7 +65,12 @@ function camp(){
   const root=$('researchList');root.replaceChildren();
   for(const [id,r] of Object.entries(RESEARCH)){
     const article=element('div','research-info');
-    const icon=element('div','tech-icon','⌁');
+    const icon=element('div','tech-icon');
+    const techVisual={precision:'kinetic',capacitor:'pulse',logistics:'mortar',
+      cooling:'cryo',droneArmor:'antiAir',resonance:'sonic',
+      medtech:'pulse',survival:'mortar',lastStand:'sonic'};
+    const picture=element('img','tech-sprite');picture.src=iconDataURL(techVisual[id]||'kinetic','tower',80);
+    picture.alt='';icon.append(picture);
     const body=element('div','tech-content');
     body.append(element('strong','',r.name),element('p','',r.desc),
       element('small','',r.materials+' материалов · '+r.data+' данных'));
@@ -221,7 +226,12 @@ function renderEquipment(){
   for(const type of modes){
     const data=TOWERS[type]||TRAPS[type]||UNITS[type];
     const button=element('button','build-option'+(selectedType===type&&mode==='build'?' active':''));
-    button.type='button';button.append(element('span','build-icon',data.icon));
+    button.type='button';button.setAttribute('aria-label',(data.short||data.name)+', '+buildCost(type)+' энергии снабжения');
+    const icon=element('span','build-icon');
+    const picture=element('img','build-art-icon');
+    picture.src=iconDataURL(type,TOWERS[type]?'tower':TRAPS[type]?'trap':'unit',88);
+    picture.alt='';
+    icon.append(picture);button.append(icon);
     const label=element('span','build-name');label.append(element('strong','',data.short||data.name),element('small','',buildCost(type)+' ЭС · '+(TOWERS[type]?'Башня':TRAPS[type]?'Ловушка':'Подвижный отряд')));
     button.append(label);
     button.addEventListener('click',()=>{mode='build';moveCommand=false;selectedType=type;selectedId=null;selectedCell=null;renderEquipment();selection();});
@@ -337,6 +347,7 @@ function finishMission(){
   const prize=success?grantVictory(progress,selectedMission,mission.stars):null;
   if(success)save();
   audio.cue(success?'victory':'defeat');
+  document.querySelector('.results-card').style.setProperty('--biome-image',`url("${biomePreviewURL(def.biome)}")`);
   $text('resultsSector','ОТЧЁТ // СЕКТОР '+String(def.number).padStart(2,'0'));
   $text('resultsBadge',success?(campaignComplete(progress)?'ПЛАНЕТА ИССЛЕДОВАНА':'МИССИЯ ВЫПОЛНЕНА'):'ЭКСПЕДИЦИЯ ОТСТУПИЛА');
   $text('resultsTitle',success?(campaignComplete(progress)?'Нова-7: мир с соседями':def.name+' — успех'):'Задание провалено');
