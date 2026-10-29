@@ -63,6 +63,7 @@ try{
   await run("document.querySelector('#toMap').click()");
   await check("document.querySelectorAll('#sectorNodes button').length===24",'24 sectors');
   await check("document.querySelectorAll('#sectorNodes .chapter-block').length===8",'eight biomes');
+  await check("document.querySelector('#sectorNodes .chapter-block').style.getPropertyValue('--biome-image').includes('data:image/png')",'biome chapter thumbnails');
   await run("document.querySelectorAll('#sectorNodes button')[23].click()");
   await check("document.querySelector('#mapPlay').disabled",'last sector locked on new save');
   await check("document.querySelector('#mapTitle').textContent==='Неизведанная территория'",'no undiscovered spoilers');
@@ -70,9 +71,13 @@ try{
   await check("document.querySelector('#mapPlay').disabled===false",'first sector unlocked');
   await run("document.querySelector('#mapPlay').click()");
   await check("document.querySelector('#screen-briefing').classList.contains('active')",'briefing');
+  await check("document.querySelector('#briefingArt').style.backgroundImage.includes('data:image/png')",'briefing landscape illustration');
   await run("document.querySelector('#briefSkip').click()");
   await check("document.querySelector('#screen-mission').classList.contains('active')",'battle');
   await check("document.querySelector('#field').width>0",'canvas');
+  await sleep(180);
+  await check("(()=>{const x=document.querySelector('#field'),c=x.getContext('2d');const d=c.getImageData(0,0,x.width,x.height).data;const values=new Set();for(let i=0;i<d.length;i+=Math.max(4,Math.floor(d.length/600/4)*4))values.add(d[i]+','+d[i+1]+','+d[i+2]);return values.size>=8})()",'illustrated battlefield pixels');
+  await check("document.querySelector('#equipmentList .build-art-icon')?.src.startsWith('data:image/png')===true",'illustrated equipment cards');
   await check("document.querySelectorAll('#equipmentList button').length>=2",'equipment');
   const point=await run("(()=>{const r=document.querySelector('#field').getBoundingClientRect();const s=Math.max(20,Math.min(70,Math.min(r.width/20,r.height/12)));return {x:r.left+r.width/2+(2.5-10)*s,y:r.top+r.height/2+(4.5-6)*s};})()");
   await call('Input.dispatchMouseEvent',{type:'mousePressed',x:point.x,y:point.y,button:'left',clickCount:1});
