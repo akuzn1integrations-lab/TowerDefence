@@ -1,14 +1,14 @@
 {
   "name": "towerdefence-nova7",
   "private": true,
-  "version": "0.3.0",
+  "version": "0.4.0",
   "type": "module",
   "description": "Научно-фантастическая Tower Defence: 24 сектора кампании на чистом JavaScript.",
   "scripts": {
     "start": "node server.js",
     "test": "node --test",
     "smoke": "node tests/browser-smoke.mjs",
-    "check": "node --check src/config.js && node --check src/model.js && node --check src/progress.js && node --check src/visual.js && node --check src/audio.js && node --check src/main.js"
+    "check": "node --check src/config.js && node --check src/model.js && node --check src/progress.js && node --check src/art.js && node --check src/visual.js && node --check src/audio.js && node --check src/main.js"
   },
   "engines": {
     "node": ">=20"
