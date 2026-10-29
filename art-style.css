@@ -148,3 +148,21 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;op
  .build-name small{font-size:.57rem}
 }
 .reduced-motion .build-option,.reduced-motion .btn{transition:none}
+
+
+/* Optional high-resolution images from NOVA7-graphics-pack.zip.
+   Enabled only after manifest and images have loaded successfully. */
+.raster-art .hero::before{
+  background:linear-gradient(90deg,#061421ed 0%,#061421c6 35%,#0614212a 75%,#06142118 100%),
+    url('./assets/generated/hero.webp') center 48%/cover no-repeat;
+}
+.raster-art .camp-scene{
+  background:linear-gradient(0deg,#07162497,#132e4320),
+    url('./assets/generated/hero.webp') center 42%/cover no-repeat!important;
+}
+@media(max-width:800px){
+  .raster-art .hero::before{
+    background:linear-gradient(0deg,#071421f0 0%,#061421b9 48%,#06142140 100%),
+      url('./assets/generated/hero.webp') 58% center/auto 100% no-repeat;
+  }
+}
