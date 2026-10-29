@@ -40,3 +40,40 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;op
  .planet-label{bottom:14px;right:13px;font-size:.58rem}
 }
 @media(prefers-reduced-motion:reduce){.hero,.btn{scroll-behavior:auto}}
+
+
+/* Sector atlas and intelligence screens */
+.worldmap{background:linear-gradient(145deg,#102b3be9,#071726f2),radial-gradient(circle at 65% 30%,#2b546c,#081a2a);border-color:#59afcd9e}
+.worldmap::before{content:"";position:absolute;inset:0;opacity:.32;pointer-events:none;background:repeating-radial-gradient(circle at 63% 49%,transparent 0 55px,#7fe0ff25 56px,#7fe0ff25 57px,transparent 58px 101px)}
+.map-orbit{filter:drop-shadow(0 0 25px #3fc9ef59)}
+.chapter-block{position:relative;overflow:hidden;isolation:isolate;background:linear-gradient(110deg,#071929e9,#0d2838d8 73%)!important;border-color:#4fa4b585!important}
+.chapter-block::before{content:"";position:absolute;inset:0;z-index:-1;background-image:linear-gradient(90deg,#0617259c,#0b2232b6),var(--biome-image);background-size:cover,cover;background-position:center;opacity:.87;transform:scale(1.015)}
+.chapter-block:hover::before{opacity:1}
+.chapter-name{position:relative;display:flex;align-items:center;gap:10px;color:#c9f9ff;letter-spacing:.13em;text-shadow:0 2px 10px #040c1f;font-weight:800}
+.chapter-name::before{content:"";width:4px;height:17px;border-radius:2px;background:#6feeff;box-shadow:0 0 11px #58efff}
+.chapter-sector-grid .sector-chip{background:#082134dd;border-color:#5598ad8c;backdrop-filter:blur(4px)}
+.chapter-sector-grid .sector-chip.available{background:linear-gradient(120deg,#173c4fdd,#0d2c39e3);border-color:#6cdbebaf}
+.chapter-sector-grid .sector-chip.selected{outline-color:#a2faff;box-shadow:0 0 21px #6febff66}
+.chapter-sector-grid .sector-chip.locked{background:#091524d9}
+.sector-chip .sector-index{color:#8bffff;font-weight:800;text-shadow:0 0 13px #47d7f66c}
+.sector-chip.available:hover{background:#20516a}
+.sector-detail{position:relative;overflow:hidden;isolation:isolate}
+.sector-detail::before{content:"";position:absolute;left:0;right:0;top:0;height:180px;z-index:-1;pointer-events:none;background-image:linear-gradient(0deg,#0a2234,#07192d39),var(--biome-image);background-size:cover;background-position:center;opacity:.4}
+.sector-detail .detail-list{position:relative}
+.brief-wrap{overflow:hidden;border:1px solid #68cbe2a1}
+.brief-visual{position:relative;background-size:cover!important;background-position:center!important;box-shadow:0 0 0 1px #89eaff55 inset,0 -45px 44px #07162580 inset}
+.brief-visual::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent 0 16px,#5de1f808 17px,#5de1f808 18px);pointer-events:none}
+.brief-image-label{color:#b9fbff;background:#051928ca;border:1px solid #4ab8c57d;text-shadow:0 1px 7px #000}
+.radar{background:radial-gradient(circle,#0e39517a,#041d3459 60%,transparent 70%);border:1px solid #83dcea9c;box-shadow:0 0 23px #5cdbfd49,0 0 50px #001b266b inset}
+.radar::before,.radar::after{border-color:#8beeff7a!important}
+.radar-center{color:#e3ffff;text-shadow:0 0 14px #30e9ff}
+.brief-dots .active{background:#8cf2ff!important;box-shadow:0 0 12px #50efff}
+.archive-entry{position:relative;overflow:hidden;background:linear-gradient(110deg,#0b2639,#0a1e2d);border-color:#447b928c}
+.archive-entry .archive-specimen{width:72px;height:72px;object-fit:contain;float:right;margin:0 0 8px 12px;filter:drop-shadow(0 0 9px #9b7cf565)}
+.archive-entry .archive-head{position:relative}
+.archive-entry strong{color:#e1faff}
+@media(max-width:800px){
+ .sector-detail::before{height:120px}
+ .brief-visual{background-size:cover!important}
+ .archive-entry .archive-specimen{width:58px;height:58px}
+}
