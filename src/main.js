@@ -9,7 +9,7 @@ import {
 } from './progress.js';
 import { Battlefield } from './visual.js';
 import { AudioDirector } from './audio.js';
-import { biomePreviewURL, iconDataURL } from './art.js';
+import { biomePreviewURL, iconDataURL, loadOptionalRasterArt } from './art.js';
 
 const $=id=>document.getElementById(id);
 const screens=[...document.querySelectorAll('.screen')];
@@ -463,4 +463,13 @@ if(loadWarning)setTimeout(()=>toast(loadWarning),500);
 if(MISSION_IDS.some(id=>record(id).victories>0))$text('continueButton','Продолжить экспедицию');
 document.addEventListener('pointerdown',()=>audio.startMusic(),{once:true});
 document.addEventListener('keydown',()=>audio.startMusic(),{once:true});
+loadOptionalRasterArt().then(loaded=>{
+  if(!loaded)return;
+  if(field?.state)field.makeTerrain();
+  if(screen==='mission'&&mission)renderEquipment();
+  else if(screen==='map')map();
+  else if(screen==='briefing')drawBrief();
+  else if(screen==='archive')archive();
+  else if(screen==='camp')camp();
+}).catch(()=>{}); // Optional raster images never prevent a playable game.
 requestAnimationFrame(tick);
