@@ -1,0 +1,42 @@
+/* NOVA–7 cinematic skin. Kept in a separate stylesheet from responsive layout rules. */
+:root{--art-cyan:#63eaff;--art-orange:#ffae68;--art-metal:#142c40;--art-ink:#071422}
+body{background:radial-gradient(ellipse at 70% -12%,#1c4269 0,transparent 46%),radial-gradient(ellipse at 4% 79%,#123b45 0,transparent 42%),#060e1b;color:#e9f4fa}
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.17;background-image:linear-gradient(#2f86aa16 1px,transparent 1px),linear-gradient(90deg,#2f86aa16 1px,transparent 1px);background-size:37px 37px}
+.topbar{background:linear-gradient(115deg,#071b2af0,#0b2533e8 68%,#0c2335f2);border-bottom:1px solid #4fbbdd77;box-shadow:0 12px 38px #0007,0 1px 0 #9ff9ff22 inset}
+.brand-icon{color:#8efbff;text-shadow:0 0 16px #31c4f5}
+.brand-accent{color:#63efff}
+.panel{background:linear-gradient(155deg,#102940f1,#081b2af2);border:1px solid #4285a18e;box-shadow:0 12px 38px #020a13a8,0 1px 0 #b5f5ff18 inset;border-radius:11px}
+.panel::before{pointer-events:none}
+.btn{border-radius:7px;letter-spacing:.015em;box-shadow:0 1px 0 #ffffff12 inset}
+.btn.primary{background:linear-gradient(145deg,#7bf8f3,#41bfde);color:#06202d;border:1px solid #acfcfa;box-shadow:0 0 19px #41ddf02e,0 2px 0 #e3ffff8a inset}
+.btn.primary:hover:not(:disabled){background:linear-gradient(145deg,#c7fffe,#66e8f4);box-shadow:0 0 22px #43e2ff71}
+.btn.outline{border:1px solid #70c3dc7a;background:linear-gradient(120deg,#112d44,#0c2132);color:#c4f7ff}
+.btn.outline:hover:not(:disabled){border-color:#83ebf9;background:#174359}
+.eyebrow{color:#79e6ff;letter-spacing:.17em}
+.hero{position:relative;isolation:isolate;overflow:hidden;border-radius:18px;background:#0c2336;border:1px solid #3e9ab68a;box-shadow:0 35px 100px #010510bb,0 0 45px #20afe415 inset;min-height:clamp(430px,51vw,640px)}
+.hero::before{content:"";position:absolute;inset:0;z-index:-2;background:linear-gradient(90deg,#061421 0%,#061421e8 28%,#06142158 58%,#07162514 100%),url('./assets/art/frontier.svg') center 45%/cover no-repeat}
+.hero::after{content:"";position:absolute;inset:auto 0 0;z-index:-1;height:115px;background:linear-gradient(transparent,#071725)}
+.hero-copy{position:relative;z-index:2;max-width:min(590px,66%);padding:clamp(30px,5.5vw,74px) clamp(25px,5.5vw,70px)}
+.hero-copy h1{text-wrap:balance;color:#f4fcff;text-shadow:0 4px 25px #020b14cc;line-height:1.05}
+.hero-copy em{font-style:normal;color:#8cefff;text-shadow:0 0 20px #13e2ff3b}
+.hero-copy p{color:#d3e6ee;max-width:440px;text-shadow:0 2px 12px #020d15}
+.planet-art{position:absolute!important;inset:0;max-width:none!important;width:100%!important;height:100%!important;min-height:0!important;pointer-events:none}
+.planet-art .planet,.planet-art .ring{display:none!important}
+.planet-label{position:absolute;bottom:26px;right:28px;padding:7px 11px!important;border:1px solid #8fe5f076;background:#071625d9;color:#c6f8ff;font-family:ui-monospace,monospace;letter-spacing:.08em;text-shadow:0 0 8px #53bcff}
+.feature-strip>div{position:relative;background:linear-gradient(135deg,#112b40,#0d2130);border:1px solid #2f68817d;box-shadow:0 6px 28px #010a1490}
+.feature-strip>div::after{content:"";position:absolute;top:0;right:9px;width:40px;height:2px;background:#56dce8;box-shadow:0 0 8px #56dce8}
+.stat-card{background:linear-gradient(145deg,#163a4f,#0a2335);border:1px solid #4695a574;box-shadow:0 10px 26px #01060c66,inset 0 1px #aefeff24}
+.stat-card strong{color:#d3faff;text-shadow:0 0 14px #71e5ff2c}
+.camp-scene{position:relative;overflow:hidden;border-radius:10px!important;background:linear-gradient(0deg,#0617246c,#0d2d3b00),url('./assets/art/frontier.svg') center 66%/cover no-repeat!important;min-height:270px;box-shadow:0 0 34px #3cdff025 inset,0 0 0 1px #75e9ef36}
+.camp-scene .ship,.camp-scene .ground,.camp-scene .light-beam{display:none!important}
+.scenic-panel{background:linear-gradient(#071a29a9,#081a2abb),#0b2437}
+.scenic-panel h2,.scenic-panel p{position:relative;text-shadow:0 2px 10px #010b12}
+.research-info{border:1px solid #2c647e66;background:#0b2234}
+.tech-icon{background:radial-gradient(circle,#23708d,#133448)!important;border:1px solid #60d8eb8a;color:#c1f9ff!important;box-shadow:0 0 16px #33d2ec39}
+@media(max-width:800px){
+ .hero{min-height:560px}
+ .hero::before{background:linear-gradient(0deg,#061421e7 0%,#061421bc 44%,#06142121 100%),url('./assets/art/frontier.svg') 55% top/auto 100% no-repeat}
+ .hero-copy{max-width:100%;padding:clamp(26px,6vw,44px)}
+ .planet-label{bottom:14px;right:13px;font-size:.58rem}
+}
+@media(prefers-reduced-motion:reduce){.hero,.btn{scroll-behavior:auto}}
